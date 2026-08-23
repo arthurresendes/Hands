@@ -8,3 +8,4 @@ validate_docbr==2.0.0
 python-dotenv==1.2.2
 pyjwt==2.13.0
 pydantic-settings==2.15.0
+pytz==2026.2
