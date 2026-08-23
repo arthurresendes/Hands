@@ -1,27 +1,22 @@
-from motor.motor_asyncio import AsyncIOMotorClient
-from bson import ObjectId
-import os
-from dotenv import load_dotenv
-load_dotenv()
-
-uri = (os.getenv('MONGO_URI'))
-client = AsyncIOMotorClient(uri)
-
-db = client['hands_marktplace']
-admin = db['admin']
-prestador = db['prestador']
-cliente = db['cliente']
+from core.database import cliente_col,prestador_col
+#from motor.motor_asyncio import AsyncIOMotorClient
+#from bson import ObjectId
 
 protecao_dados_sensiveis = {
-        '_id': 0,
         'senha': 0,
         'Endereco.cep': 0,
         'cpf': 0
 }
 
 async def listagem_clientes():
-    return await cliente.find({}, protecao_dados_sensiveis).to_list(length=None)
+    docs =  await cliente_col.find({}, protecao_dados_sensiveis).to_list(length=None)
+    for d in docs:
+        d['_id'] = str(d['_id'])
+    return docs
 
 async def listagem_prestadores():
-    return await prestador.find({}, protecao_dados_sensiveis).to_list(length=None)
+    docs = await prestador_col.find({}, protecao_dados_sensiveis).to_list(length=None)
+    for d in docs:
+            d['_id'] = str(d['_id'])
+    return docs
 

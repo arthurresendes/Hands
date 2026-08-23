@@ -1,10 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers.api.endpoint.routes_padrao import router
+from routers.api.endpoint.router_auth import routerauth
 import uvicorn
+from contextlib import asynccontextmanager
+from core.database import criar_indices
 
-app = FastAPI(title="Hands - Marktplace", version="1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await criar_indices()
+    yield
+
+app = FastAPI(title="Hands - Marktplace", version="1.0",lifespan=lifespan)
 app.include_router(router)
+app.include_router(routerauth)
 
 app.add_middleware(
     CORSMiddleware,
