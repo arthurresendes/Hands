@@ -66,7 +66,7 @@ async def adicionar_cliente(nome: str, email: str, idade: int, cep: str, cpf: st
     insercao = await cliente_col.insert_one(cliente_add)
     return {'Sucesso': f'Cliente adicionado com o id: {insercao.inserted_id}'}
 
-async def adicionar_prestador(nome: str, email: str, idade: int, cep: str, cpf: str,body: str,valor_inicio: float,valor_final: float, senha: str,certificacoes: list[str] | None = None,idiomas: list[str] | None = None):
+async def adicionar_prestador(nome: str, email: str, idade: int, cep: str, cpf: str,body: str,valor: float,servico: str, senha: str,certificacoes: list[str] | None = None,idiomas: list[str] | None = None):
     validacao_cpf_prestador = await validar_cpf(cpf)
     if validacao_cpf_prestador != True:
         return {'Erro': 'CPF não validado, insira novamente.'}
@@ -75,7 +75,7 @@ async def adicionar_prestador(nome: str, email: str, idade: int, cep: str, cpf: 
         return {"Erro": resultado_cep["erro"]}
     prestador_add = {'nome': nome, 'email': email, 'idade': idade, 'Endereco': [
                 {'cep': cep, 'rua': resultado_cep ['rua'], 'cidade': resultado_cep ['cidade'], 'estado': resultado_cep['estado'], 'latitude': resultado_cep['lat'], 'longitude': resultado_cep['lon']}
-            ], 'cpf': cpf, 'informacoes': body,'de_valor': valor_inicio, 'ate_valor': valor_final,'idiomas': idiomas ,'certificados': certificacoes,'senha': gerar_senha_hash(senha)}
+            ], 'cpf': cpf, 'informacoes': body,'valor':valor,'servico': servico,'idiomas': idiomas ,'certificados': certificacoes,'senha': gerar_senha_hash(senha)}
     insercao = await prestador_col.insert_one(prestador_add)
     return {'Sucesso': f'Prestador adicionado com o id: {insercao.inserted_id}'}
 

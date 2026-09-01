@@ -26,17 +26,13 @@ def criar_token_acesso(sub: str, role: str) -> str:
         tempo_vida=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 # Autenticação
-async def autenticar_cliente_ou_admin(email: str, senha: str) -> Optional[dict]:
+async def autenticar_cliente(email: str, senha: str) -> Optional[dict]:
     usuario = await cliente_col.find_one({"email": email})
-    role = "cliente"
-    if not usuario:
-        usuario = await admin_col.find_one({"email": email})
-        role = "admin"
     if not usuario:
         return None
     if not verificar_senha(senha, usuario["senha"]):
         return None
-    usuario["role"] = role
+    usuario["role"] = "cliente"
     return usuario
 
 async def autenticar_prestador(email: str, senha: str) -> Optional[dict]:
@@ -47,3 +43,12 @@ async def autenticar_prestador(email: str, senha: str) -> Optional[dict]:
         return None
     prestador["role"] = "prestador"
     return prestador
+
+async def autenticar_admin(email: str, senha: str)-> Optional[dict]:
+    admin = await admin_col.find_one({"email": email})
+    if not admin: 
+        return None
+    if not verificar_senha(senha, admin["senha"]):
+        return None
+    admin["role"] = "admin"
+    return admin
