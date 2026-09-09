@@ -1,7 +1,7 @@
 from fastapi import APIRouter,status,HTTPException,Request
 from src.mongo.query import listagem_clientes,listagem_prestadores
 from src.mongo.criacao import adicionar_cliente,adicionar_prestador
-from schemas.Cadastro import Cliente
+from schemas.Cadastro import Cliente,Prestador
 
 router = APIRouter()
 
@@ -25,3 +25,22 @@ async def cadastro_cliente(cliente: Cliente):
     if "Erro" in resultado:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=resultado)
     return {'Message': f'Sucesso ao cadastrar o cliente: {cliente.nome}'}
+
+@router.post('/cadastrar_prestador', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Cadastro de prestador')
+async def cadastro_prestador(prestador: Prestador):
+    resultado = await adicionar_prestador(
+        nome=prestador.nome,
+        email=prestador.email,
+        idade=prestador.idade,
+        cep=prestador.cep,
+        cpf=prestador.cpf,
+        body=prestador.body,
+        valor=prestador.valor,
+        senha=prestador.senha,
+        servicos=prestador.servicos,
+        idiomas=prestador.idiomas,
+        certificacoes=prestador.certificacoes
+    )
+    if "Erro" in resultado:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=resultado)
+    return {'Message': f'Sucesso ao cadastrar o prestador: {prestador.nome}'}
