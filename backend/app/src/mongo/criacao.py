@@ -60,7 +60,7 @@ async def adicionar_cliente(nome: str, email: str, idade: int, cep: str, cpf: st
     resultado_cep  = await pegar_dados_cep(cep)
     if "erro" in resultado_cep:
         return {"Erro": resultado_cep["erro"]}
-    cliente_add = {'nome': nome, 'email': email, 'idade': idade, 'Endereco': [
+    cliente_add = {'nome': nome, 'email': email, 'idade': idade, 'endereco': [
                 {'cep': cep, 'rua': resultado_cep ['rua'], 'cidade': resultado_cep ['cidade'], 'estado': resultado_cep['estado'], 'latitude': resultado_cep['lat'], 'longitude': resultado_cep['lon']}
             ], 'cpf': cpf, 'contexto': body, 'senha': gerar_senha_hash(senha)}
     insercao = await cliente_col.insert_one(cliente_add)
@@ -73,7 +73,7 @@ async def adicionar_prestador(nome: str, email: str, idade: int, cep: str, cpf: 
     resultado_cep  = await pegar_dados_cep(cep)
     if "erro" in resultado_cep:
         return {"Erro": resultado_cep["erro"]}
-    prestador_add = {'nome': nome, 'email': email, 'idade': idade, 'Endereco': [
+    prestador_add = {'nome': nome, 'email': email, 'idade': idade, 'endereco': [
                 {'cep': cep, 'rua': resultado_cep ['rua'], 'cidade': resultado_cep ['cidade'], 'estado': resultado_cep['estado'], 'latitude': resultado_cep['lat'], 'longitude': resultado_cep['lon']}
             ], 'cpf': cpf, 'informacoes': body,'valor':valor,'servico': servico,'idiomas': idiomas ,'certificados': certificacoes,'senha': gerar_senha_hash(senha)}
     insercao = await prestador_col.insert_one(prestador_add)

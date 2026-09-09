@@ -4,7 +4,7 @@ from core.database import cliente_col,prestador_col
 
 protecao_dados_sensiveis = {
         'senha': 0,
-        'Endereco.cep': 0,
+        'endereco.cep': 0,
         'cpf': 0
 }
 
