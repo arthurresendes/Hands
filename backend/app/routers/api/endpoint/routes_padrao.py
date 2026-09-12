@@ -2,6 +2,7 @@ from fastapi import APIRouter,status,HTTPException,Request
 from src.mongo.query import listagem_clientes,listagem_prestadores
 from src.mongo.criacao import adicionar_cliente,adicionar_prestador
 from schemas.Cadastro import Cliente,Prestador
+from core.database import cliente_col,prestador_col
 
 router = APIRouter()
 
@@ -21,6 +22,11 @@ async def ver_todos_prestadores():
 
 @router.post('/cadastrar_cliente', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Cadastro de clientes')
 async def cadastro_cliente(cliente: Cliente):
+    check_user = await cliente_col.find_one({'email': cliente.email})
+    if check_user is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Cliente com esse e-mail já cadastrado!"
+        )
     resultado = await adicionar_cliente(nome=cliente.nome, email=cliente.email, idade=cliente.idade, cep=cliente.cep, cpf=cliente.cpf, body=cliente.body, senha=cliente.senha)
     if "Erro" in resultado:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=resultado)
@@ -28,6 +34,11 @@ async def cadastro_cliente(cliente: Cliente):
 
 @router.post('/cadastrar_prestador', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Cadastro de prestador')
 async def cadastro_prestador(prestador: Prestador):
+    check_user = await prestador_col.find_one({'email': prestador.email})
+    if check_user is not None:
+        raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT, detail="Prestador com esse email já cadastrado!"
+        )
     resultado = await adicionar_prestador(
         nome=prestador.nome,
         email=prestador.email,
