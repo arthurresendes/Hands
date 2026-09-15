@@ -1,6 +1,18 @@
-from core.database import cliente_col,prestador_col
+from core.database import cliente_col,prestador_col,db
 #from motor.motor_asyncio import AsyncIOMotorClient
 #from bson import ObjectId
+from fastapi import HTTPException, status
+
+async def deletar_por_email(collection_name: str, email: str):
+    collection = db[collection_name]
+    email_limpo = email.strip() 
+    resultado = await collection.delete_one({'email': email_limpo})
+    if resultado.deleted_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Cliente não encontrado"
+        )
+    return
 
 protecao_dados_sensiveis = {
         'senha': 0,
