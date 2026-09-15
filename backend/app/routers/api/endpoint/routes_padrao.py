@@ -1,5 +1,5 @@
 from fastapi import APIRouter,status,HTTPException,Request
-from src.mongo.query import listagem_clientes,listagem_prestadores
+from src.mongo.query import listagem_clientes,listagem_prestadores,deletar_por_email
 from src.mongo.criacao import adicionar_cliente,adicionar_prestador
 from schemas.Cadastro import Cliente,Prestador
 from core.database import cliente_col,prestador_col
@@ -55,3 +55,28 @@ async def cadastro_prestador(prestador: Prestador):
     if "Erro" in resultado:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=resultado)
     return {'Message': f'Sucesso ao cadastrar o prestador: {prestador.nome}'}
+
+@router.delete('/deletar_prestador/{email}', tags=["DELETE"], status_code=status.HTTP_204_NO_CONTENT, summary="Deletando prestador por email")
+async def deletar_prestador(email: str):
+    try:
+        resultado = await deletar_por_email('prestador', email)
+        return resultado
+    except HTTPException:
+        raise 
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno ao deletar prestador: {str(error)}"
+        )
+
+@router.delete('/deletar_cliente/{email}', tags=["DELETE"], status_code=status.HTTP_204_NO_CONTENT, summary="Deletando cliente por email")
+async def deletar_cliente(email: str):
+    try:
+        resultado = await deletar_por_email('cliente', email)
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno ao deletar cliente: {str(error)}"
+        )
