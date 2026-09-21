@@ -3,19 +3,21 @@ from pydantic import BaseModel
 class Cliente(BaseModel):
     nome: str
     email: str
+    celular: str
     idade: int
     cep: str
     cpf: str
-    body: str
+    informacoes: str
     senha: str
 
 class Prestador(BaseModel):
     nome: str
     email: str
+    celular: str
     idade: int
     cep: str
     cpf: str
-    body: str
+    informacoes: str
     valor: float
     senha: str
     servicos: list[str]

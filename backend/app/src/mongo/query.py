@@ -6,17 +6,6 @@ from fastapi import HTTPException, status
 from core.security import gerar_senha_hash
 from src.mongo.criacao import validar_cpf,pegar_dados_cep
 
-async def deletar_por_email(collection_name: str, email: str):
-    collection = db[collection_name]
-    email_limpo = email.strip() 
-    resultado = await collection.delete_one({'email': email_limpo})
-    if resultado.deleted_count == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="Cliente não encontrado"
-        )
-    return
-
 protecao_dados_sensiveis = {
         'senha': 0,
         'endereco.cep': 0,
@@ -99,3 +88,13 @@ async def atualizar_cep(collection_name: str,id: str, cep: str):
     except InvalidId:
         return False
 
+async def deletar_por_email(collection_name: str, email: str):
+    collection = db[collection_name]
+    email_limpo = email.strip() 
+    resultado = await collection.delete_one({'email': email_limpo})
+    if resultado.deleted_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Cliente não encontrado"
+        )
+    return
