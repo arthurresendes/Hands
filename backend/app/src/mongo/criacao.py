@@ -53,29 +53,29 @@ async def validar_cpf(cpf_user):
     conversao = "".join([c for c in cpf_user if c.isdigit()])
     return cpf.validate(conversao)
 
-async def adicionar_cliente(nome: str, email: str, idade: int, cep: str, cpf: str,body: str,senha: str):
+async def adicionar_cliente(nome: str, email: str,celular: str, idade: int, cep: str, cpf: str,informacoes: str,senha: str):
     validacao_cpf_cliente = await validar_cpf(cpf)
     if validacao_cpf_cliente != True:
         return {'Erro': 'CPF não validado, insira novamente.'}
     resultado_cep  = await pegar_dados_cep(cep)
     if "erro" in resultado_cep:
         return {"Erro": resultado_cep["erro"]}
-    cliente_add = {'nome': nome, 'email': email, 'idade': idade, 'endereco': [
+    cliente_add = {'nome': nome, 'email': email,'celular': celular, 'idade': idade, 'endereco': [
                 {'cep': cep, 'rua': resultado_cep ['rua'], 'cidade': resultado_cep ['cidade'], 'estado': resultado_cep['estado'], 'latitude': resultado_cep['lat'], 'longitude': resultado_cep['lon']}
-            ], 'cpf': cpf, 'contexto': body, 'senha': gerar_senha_hash(senha)}
+            ], 'cpf': cpf, 'informacoes': informacoes, 'senha': gerar_senha_hash(senha)}
     insercao = await cliente_col.insert_one(cliente_add)
     return {'Sucesso': f'Cliente adicionado com o id: {insercao.inserted_id}'}
 
-async def adicionar_prestador(nome: str, email: str, idade: int, cep: str, cpf: str,body: str,valor: float, senha: str,servicos: list[str],idiomas: list[str],certificacoes: list[str] | None = None):
+async def adicionar_prestador(nome: str, email: str,celular: str, idade: int, cep: str, cpf: str,informacoes: str,valor: float, senha: str,servicos: list[str],idiomas: list[str],certificacoes: list[str] | None = None):
     validacao_cpf_prestador = await validar_cpf(cpf)
     if validacao_cpf_prestador != True:
         return {'Erro': 'CPF não validado, insira novamente.'}
     resultado_cep  = await pegar_dados_cep(cep)
     if "erro" in resultado_cep:
         return {"Erro": resultado_cep["erro"]}
-    prestador_add = {'nome': nome, 'email': email, 'idade': idade, 'endereco': [
+    prestador_add = {'nome': nome, 'email': email, 'celular': celular, 'idade': idade, 'endereco': [
                 {'cep': cep, 'rua': resultado_cep ['rua'], 'cidade': resultado_cep ['cidade'], 'estado': resultado_cep['estado'], 'latitude': resultado_cep['lat'], 'longitude': resultado_cep['lon']}
-            ], 'cpf': cpf, 'informacoes': body,'valor':valor,'servicos': servicos,'idiomas': idiomas ,'certificados': certificacoes,'senha': gerar_senha_hash(senha)}
+            ], 'cpf': cpf, 'informacoes': informacoes,'valor':valor,'servicos': servicos,'idiomas': idiomas ,'certificados': certificacoes,'senha': gerar_senha_hash(senha)}
     insercao = await prestador_col.insert_one(prestador_add)
     return {'Sucesso': f'Prestador adicionado com o id: {insercao.inserted_id}'}
 
