@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Response
-from schemas.Login import LoginRequest,LoginResponse
+from schemas.login import LoginRequest,LoginResponse
 from core.auth import autenticar_cliente,autenticar_admin, autenticar_prestador, criar_token_acesso
 from core.configs import settings
 

@@ -1,7 +1,32 @@
 services:
+  mongo:
+    image: mongo:7
+    container_name: hands-mongo
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+
   backend:
     build: ./backend
     container_name: hands-backend
     restart: always
+    depends_on:
+      - mongo
     ports:
       - "8000:8000"
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: hands
+      JWT_SECRET: ${JWT_SECRET}
+      ENV: ${ENV:-dev}
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: hands-tunnel
+    restart: always
+    command: tunnel --url http://hands-backend:8000
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
