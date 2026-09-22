@@ -20,5 +20,13 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       ENV: ${ENV:-dev}
 
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: hands-tunnel
+    restart: always
+    command: tunnel --url http://hands-backend:8000
+    depends_on:
+      - backend
+
 volumes:
   mongo_data:
