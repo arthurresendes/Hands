@@ -1,4 +1,4 @@
-from core.database import cliente_col,prestador_col,db
+from core.database import cliente_col,prestador_col,db,feedback_hands_col,feedback_cliente_col,feedback_prestador_col
 #from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -20,6 +20,24 @@ async def listagem_clientes():
 
 async def listagem_prestadores():
     docs = await prestador_col.find({}, protecao_dados_sensiveis).to_list(length=None)
+    for d in docs:
+            d['_id'] = str(d['_id'])
+    return docs
+
+async def listagem_avaliacoes_hands():
+    docs = await feedback_hands_col.find({}, protecao_dados_sensiveis).to_list(length=None)
+    for d in docs:
+            d['_id'] = str(d['_id'])
+    return docs
+
+async def listagem_avaliacoes_clientes():
+    docs = await feedback_cliente_col.find({}, protecao_dados_sensiveis).to_list(length=None)
+    for d in docs:
+            d['_id'] = str(d['_id'])
+    return docs
+
+async def listagem_avaliacoes_prestadores():
+    docs = await feedback_prestador_col.find({}, protecao_dados_sensiveis).to_list(length=None)
     for d in docs:
             d['_id'] = str(d['_id'])
     return docs
@@ -98,3 +116,29 @@ async def deletar_por_email(collection_name: str, email: str):
             detail="Cliente não encontrado"
         )
     return
+
+async def avaliar_hands(email: str, nota: float, mensagem: str):
+    result = await feedback_hands_col.insert_one({'avaliador': email, 'nota': nota, 'mensagem': mensagem})
+    return result.inserted_id
+
+async def avaliar_pessoas(collectionName,de: str,para: str, nota: float, mensagem: str):
+    collection = db[collectionName]
+    result = await collection.insert_one({'avaliador': de,'avaliado': para, 'nota': nota,'mensagem': mensagem})
+    return result.inserted_id
+
+async def ver_avaliacoes_entregues(collectionName, email: str):
+    collection = db[collectionName]
+    res = await collection.find({'avaliador': email}).to_list(length=None)
+    for r in res:
+        r['_id'] = str(r['_id'])
+    total_elementos = len(res)
+    return res,total_elementos
+
+async def ver_avaliacoes_recebidas(collectionName, email: str):
+    collection = db[collectionName]
+    res = await collection.find({'avaliado': email}).to_list(length=None)
+    for r in res:
+        r['_id'] = str(r['_id'])
+    total_elementos = len(res)
+    return res,total_elementos
+
