@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Logo from './Logo'
-import { SearchIcon, UserIcon, StarOutlineIcon, MenuIcon, CloseIcon, LogoutIcon, ChevronDownIcon } from './icons'
+import { SearchIcon, UserIcon, StarOutlineIcon, HeartIcon, MenuIcon, CloseIcon, LogoutIcon, ChevronDownIcon } from './icons'
 
 const navLinks = [
   { label: 'Buscar Profissionais', path: '/cliente/buscar', Icon: SearchIcon },
+  { label: 'Favoritos', path: '/cliente/favoritos', Icon: HeartIcon },
   { label: 'Avaliar o Hands', path: '/cliente/avaliar', Icon: StarOutlineIcon },
   { label: 'Minha Conta', path: '/cliente/perfil', Icon: UserIcon },
 ]

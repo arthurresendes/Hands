@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import ClientLayout from '../components/ClientLayout'
-import { PinIcon, WhatsAppIcon, CheckIcon, CoinIcon, AwardIcon } from '../components/icons'
+import { PinIcon, WhatsAppIcon, CheckIcon, CoinIcon, AwardIcon, HeartIcon } from '../components/icons'
 
 const reviews = [
   { author: 'Beatriz Carvalho', rating: 5, text: 'Excelente profissional, super pontual e capricho no serviço. Recomendo muito!' },
@@ -20,6 +21,8 @@ function Stars({ rating, size = 14 }) {
 }
 
 export default function ProfessionalProfile() {
+  const [favorited, setFavorited] = useState(false)
+
   return (
     <ClientLayout>
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-6">
@@ -39,10 +42,19 @@ export default function ProfessionalProfile() {
                 <p className="text-gray-500 text-sm mt-1">Eletricista Residencial</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1fb855] text-white font-bold px-6 py-3 rounded-xl text-sm" style={{ fontFamily: 'Outfit, sans-serif' }}>
-              <WhatsAppIcon width={18} height={18} />
-              Chamar no WhatsApp
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setFavorited(!favorited)}
+                aria-label="Favoritar profissional"
+                className={`flex items-center justify-center w-12 h-12 rounded-xl border transition-colors ${favorited ? 'bg-red-50 border-red-200 text-red-500' : 'border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200'}`}
+              >
+                <HeartIcon width={20} height={20} fill={favorited ? 'currentColor' : 'none'} />
+              </button>
+              <button className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1fb855] text-white font-bold px-6 py-3 rounded-xl text-sm" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                <WhatsAppIcon width={18} height={18} />
+                Chamar no WhatsApp
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-6 mt-6 pt-6 border-t border-gray-100">

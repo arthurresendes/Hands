@@ -9,6 +9,7 @@ import ClientSearch from './pages/ClientSearch'
 import ProfessionalProfile from './pages/ProfessionalProfile'
 import ClientProfile from './pages/ClientProfile'
 import PlatformFeedback from './pages/PlatformFeedback'
+import ClientFavorites from './pages/ClientFavorites'
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/cliente/profissional" element={<ProfessionalProfile />} />
         <Route path="/cliente/perfil" element={<ClientProfile />} />
         <Route path="/cliente/avaliar" element={<PlatformFeedback />} />
+        <Route path='/cliente/favoritos' element={<ClientFavorites />} />
       </Routes>
     </BrowserRouter>
   )
