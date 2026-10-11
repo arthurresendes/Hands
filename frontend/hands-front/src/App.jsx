@@ -10,6 +10,11 @@ import ProfessionalProfile from './pages/ProfessionalProfile'
 import ClientProfile from './pages/ClientProfile'
 import PlatformFeedback from './pages/PlatformFeedback'
 import ClientFavorites from './pages/ClientFavorites'
+import ProviderClients from './pages/ProviderClients'
+import ProviderReviews from './pages/ProviderReviews'
+import ProviderProfile from './pages/ProviderProfile'
+import ProviderFeedback from './pages/ProviderFeedback'
+import ClientProfileView from './pages/ClientProfileView'
 
 export default function App() {
   return (
@@ -26,6 +31,11 @@ export default function App() {
         <Route path="/cliente/perfil" element={<ClientProfile />} />
         <Route path="/cliente/avaliar" element={<PlatformFeedback />} />
         <Route path='/cliente/favoritos' element={<ClientFavorites />} />
+        <Route path="/prestador/clientes" element={<ProviderClients />} />
+        <Route path="/prestador/avaliacoes" element={<ProviderReviews />} />
+        <Route path="/prestador/perfil" element={<ProviderProfile />} />
+        <Route path="/prestador/cliente" element={<ClientProfileView />} />
+        <Route path="/prestador/avaliar" element={<ProviderFeedback />} />
       </Routes>
     </BrowserRouter>
   )

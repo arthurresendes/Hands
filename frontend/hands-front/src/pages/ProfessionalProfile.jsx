@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import ClientLayout from '../components/ClientLayout'
-import { PinIcon, WhatsAppIcon, CheckIcon, CoinIcon, AwardIcon, HeartIcon } from '../components/icons'
+import { PinIcon, WhatsAppIcon, CheckIcon, CoinIcon, AwardIcon, HeartIcon, SendIcon } from '../components/icons'
 
 const reviews = [
   { author: 'Beatriz Carvalho', rating: 5, text: 'Excelente profissional, super pontual e capricho no serviço. Recomendo muito!' },
@@ -15,6 +15,21 @@ function Stars({ rating, size = 14 }) {
         <svg key={s} width={size} height={size} viewBox="0 0 14 14" fill={s <= rating ? '#FFC857' : '#E5E7EB'}>
           <path d="M7 1l1.545 3.13 3.455.502-2.5 2.437.59 3.437L7 8.885 3.91 10.506l.59-3.437L2 4.632l3.455-.502L7 1z" />
         </svg>
+      ))}
+    </div>
+  )
+}
+
+function StarPicker() {
+  const [value, setValue] = useState(0)
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <button key={s} type="button" onClick={() => setValue(s)} className="p-0.5">
+          <svg width="26" height="26" viewBox="0 0 14 14" fill={s <= value ? '#FFC857' : '#E5E7EB'}>
+            <path d="M7 1l1.545 3.13 3.455.502-2.5 2.437.59 3.437L7 8.885 3.91 10.506l.59-3.437L2 4.632l3.455-.502L7 1z" />
+          </svg>
+        </button>
       ))}
     </div>
   )
@@ -88,6 +103,28 @@ export default function ProfessionalProfile() {
               preventiva e corretiva, troca de quadros de energia e certificação de instalações. Atendo
               toda a região de São Paulo com agilidade e garantia de serviço.
             </p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <h2 className="font-bold text-[#1F2937] mb-1" style={{ fontFamily: 'Outfit, sans-serif' }}>Avaliar este profissional</h2>
+            <p className="text-sm text-gray-400 mb-5">Já contratou? Conte como foi sua experiência</p>
+
+            <div className="flex flex-col items-center py-6 mb-5 bg-[#F8F6FF] rounded-2xl">
+              <StarPicker />
+              <p className="text-sm text-gray-400 mt-3">Toque nas estrelas para avaliar</p>
+            </div>
+
+            <textarea
+              readOnly
+              rows={3}
+              placeholder="Como foi o atendimento desse profissional?"
+              className="w-full px-4 py-3.5 border border-gray-200 rounded-xl outline-none text-sm placeholder-gray-400 resize-none focus:border-[#5B2EFF] transition-colors mb-4"
+            />
+
+            <button className="flex items-center gap-2 bg-[#5B2EFF] hover:bg-[#4A25CC] text-white font-bold px-7 py-3.5 rounded-xl text-sm transition-colors" style={{ fontFamily: 'Outfit, sans-serif' }}>
+              <SendIcon width={16} height={16} />
+              Enviar avaliação
+            </button>
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
