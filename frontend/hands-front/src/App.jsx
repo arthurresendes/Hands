@@ -5,6 +5,10 @@ import LoginProvider from './pages/LoginProvider'
 import LoginAdmin from './pages/LoginAdmin'
 import RegisterClient from './pages/RegisterClient'
 import RegisterProvider from './pages/RegisterProvider'
+import ClientSearch from './pages/ClientSearch'
+import ProfessionalProfile from './pages/ProfessionalProfile'
+import ClientProfile from './pages/ClientProfile'
+import PlatformFeedback from './pages/PlatformFeedback'
 
 export default function App() {
   return (
@@ -16,6 +20,10 @@ export default function App() {
         <Route path="/login/admin" element={<LoginAdmin />} />
         <Route path="/cadastro/cliente" element={<RegisterClient />} />
         <Route path="/cadastro/prestador" element={<RegisterProvider />} />
+        <Route path="/cliente/buscar" element={<ClientSearch />} />
+        <Route path="/cliente/profissional" element={<ProfessionalProfile />} />
+        <Route path="/cliente/perfil" element={<ClientProfile />} />
+        <Route path="/cliente/avaliar" element={<PlatformFeedback />} />
       </Routes>
     </BrowserRouter>
   )
