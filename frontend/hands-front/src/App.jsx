@@ -15,6 +15,11 @@ import ProviderReviews from './pages/ProviderReviews'
 import ProviderProfile from './pages/ProviderProfile'
 import ProviderFeedback from './pages/ProviderFeedback'
 import ClientProfileView from './pages/ClientProfileView'
+import AdminDashboard from './pages/AdminDashboard'
+import AdminClients from './pages/AdminClients'
+import AdminProviders from './pages/AdminProviders'
+import AdminContent from './pages/AdminContent'
+
 
 export default function App() {
   return (
@@ -36,6 +41,10 @@ export default function App() {
         <Route path="/prestador/perfil" element={<ProviderProfile />} />
         <Route path="/prestador/cliente" element={<ClientProfileView />} />
         <Route path="/prestador/avaliar" element={<ProviderFeedback />} />
+        <Route path="/admin/painel" element={<AdminDashboard />} />
+        <Route path="/admin/clientes" element={<AdminClients />} />
+        <Route path="/admin/prestadores" element={<AdminProviders />} />
+        <Route path="/admin/conteudo" element={<AdminContent />} />
       </Routes>
     </BrowserRouter>
   )
