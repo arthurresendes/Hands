@@ -1,0 +1,106 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import Logo from './Logo'
+import { UsersIcon, StarOutlineIcon, UserIcon, MenuIcon, CloseIcon, LogoutIcon, ChevronDownIcon } from './icons'
+
+const navLinks = [
+  { label: 'Buscar Clientes', path: '/prestador/clientes', Icon: UsersIcon },
+  { label: 'Avaliações', path: '/prestador/avaliacoes', Icon: StarOutlineIcon },
+  { label: 'Avaliar o Hands', path: '/prestador/avaliar', Icon: StarOutlineIcon },
+  { label: 'Minha Conta', path: '/prestador/perfil', Icon: UserIcon },
+]
+
+export default function ProviderLayout({ children }) {
+  const navigate = useNavigate()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  return (
+    <div className="min-h-screen bg-[#F3F4F6]">
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-6">
+          <button onClick={() => navigate('/prestador/clientes')} className="flex-shrink-0 -my-1">
+            <Logo height={48} />
+          </button>
+
+          <nav className="hidden lg:flex items-center gap-2 flex-1 justify-center">
+            {navLinks.map((l) => (
+              <button
+                key={l.path}
+                onClick={() => navigate(l.path)}
+                className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#5B2EFF] hover:bg-[#5B2EFF]/5 px-4 py-2 rounded-xl transition-colors"
+              >
+                <l.Icon width={16} height={16} />
+                {l.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="hidden lg:block relative flex-shrink-0">
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              onBlur={() => setTimeout(() => setMenuOpen(false), 150)}
+              className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-gray-200 hover:border-[#5B2EFF]/30 transition-colors"
+            >
+              <span className="w-8 h-8 rounded-full bg-[#FFC857]/15 flex items-center justify-center" style={{ color: '#B8860B' }}>
+                <UserIcon width={16} height={16} />
+              </span>
+              <span className="text-sm font-semibold text-[#1F2937]">Marcos Silva</span>
+              <ChevronDownIcon className={`text-gray-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                <div className="p-1">
+                  <button
+                    onMouseDown={() => navigate('/prestador/perfil')}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl hover:bg-[#F8F6FF] transition-colors text-left text-sm font-medium text-[#1F2937]"
+                  >
+                    <UserIcon width={14} height={14} />
+                    Minha Conta
+                  </button>
+                  <button
+                    onMouseDown={() => navigate('/')}
+                    className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl hover:bg-red-50 transition-colors text-left text-sm font-medium text-red-500"
+                  >
+                    <LogoutIcon width={14} height={14} />
+                    Sair
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button className="lg:hidden p-2 rounded-lg text-gray-500" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu">
+            {mobileOpen ? <CloseIcon /> : <MenuIcon />}
+          </button>
+        </div>
+
+        {mobileOpen && (
+          <div className="lg:hidden border-t border-gray-100 bg-white px-6 py-5 flex flex-col gap-1">
+            {navLinks.map((l) => (
+              <button
+                key={l.path}
+                onClick={() => { navigate(l.path); setMobileOpen(false) }}
+                className="flex items-center gap-2.5 text-sm font-medium text-gray-600 text-left py-2.5"
+              >
+                <l.Icon width={16} height={16} />
+                {l.label}
+              </button>
+            ))}
+            <div className="border-t border-gray-100 mt-2 pt-3">
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2.5 text-sm font-semibold text-red-500 text-left py-2.5"
+              >
+                <LogoutIcon width={16} height={16} />
+                Sair
+              </button>
+            </div>
+          </div>
+        )}
+      </header>
+
+      <main className="max-w-7xl mx-auto px-6 py-10">{children}</main>
+    </div>
+  )
+}
