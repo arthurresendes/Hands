@@ -1,7 +1,55 @@
 services:
+  mongo:
+    image: mongo:7
+    container_name: hands-mongo
+    restart: always
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - hands-net
+
   backend:
     build: ./backend
     container_name: hands-backend
     restart: always
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: ${MONGO_DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      ENV: ${ENV:-prod}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    depends_on:
+      - mongo
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"   # opcional: só para testar no próprio servidor
+    networks:
+      - hands-net
+
+  frontend:
+    build:
+      context: ./frontend/hands-front
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+    container_name: hands-frontend
+    restart: always
+    networks:
+      - hands-net
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: always
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - hands-net
+
+volumes:
+  mongo-data:
+
+networks:
+  hands-net:

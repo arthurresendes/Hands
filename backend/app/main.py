@@ -5,6 +5,17 @@ from routers.api.endpoint.router_auth import routerauth
 import uvicorn
 from contextlib import asynccontextmanager
 from core.database import criar_indices
+import os
+
+origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*'],
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
