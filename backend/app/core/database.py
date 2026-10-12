@@ -7,6 +7,9 @@ db = client[settings.MONGO_DB_NAME]
 cliente_col = db["cliente"]
 prestador_col = db["prestador"]
 admin_col = db["admin"]
+feedback_hands_col = db["feedback_hands"]
+feedback_cliente_col = db["feedback_cliente"]
+feedback_prestador_col = db["feedback_prestador"]
 # Criação de indices para evitar duplicidades de cadastros nas collections
 async def criar_indices():
     await cliente_col.create_index("email", unique=True)

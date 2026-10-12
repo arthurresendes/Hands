@@ -1,7 +1,8 @@
 from validate_docbr import CPF
 import httpx
 from core.security import gerar_senha_hash
-from core.database import cliente_col,prestador_col,admin_col
+from core.database import cliente_col,prestador_col,admin_col,db
+from pymongo import ASCENDING
 #from motor.motor_asyncio import AsyncIOMotorClient
 #from bson import ObjectId
 #import asyncio
@@ -78,6 +79,11 @@ async def adicionar_prestador(nome: str, email: str,celular: str, idade: int, ce
             ], 'cpf': cpf, 'informacoes': informacoes,'valor':valor,'servicos': servicos,'idiomas': idiomas ,'certificados': certificacoes,'senha': gerar_senha_hash(senha)}
     insercao = await prestador_col.insert_one(prestador_add)
     return {'Sucesso': f'Prestador adicionado com o id: {insercao.inserted_id}'}
+
+async def criar_index(collection_fun: str, indice: str):
+    collection = db[collection_fun]
+    await collection.create_index([(indice, ASCENDING)])
+    print(f"Indice {indice} criado com sucesso!")
 
 '''
 if __name__ == '__main__':

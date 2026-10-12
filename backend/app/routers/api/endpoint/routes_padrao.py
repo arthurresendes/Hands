@@ -1,11 +1,12 @@
 from fastapi import APIRouter,status,HTTPException,Request
-from src.mongo.query import listagem_clientes,listagem_prestadores,deletar_por_email, busca_especifica_cliente,busca_especifica_prestador,atualizar,atualizar_senha,atualizar_cpf,atualizar_cep
+from src.mongo.query import listagem_clientes,listagem_prestadores,deletar_por_email, busca_especifica_cliente,busca_especifica_prestador,atualizar,atualizar_senha,atualizar_cpf,atualizar_cep,avaliar_hands, listagem_avaliacoes_hands,avaliar_pessoas,listagem_avaliacoes_clientes,listagem_avaliacoes_prestadores,ver_avaliacoes_recebidas,ver_avaliacoes_entregues
 from src.mongo.criacao import adicionar_cliente,adicionar_prestador
 from schemas.Cadastro import Cliente,Prestador
 from schemas.Atualizar import AtualizarCliente,AtualizarPrestador
+from schemas.Avaliar import Avaliacao,AvaliacaoPessoas
 from core.database import cliente_col,prestador_col
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1")
 
 # Rotas GET
 @router.get('/', tags=['GET'], status_code=status.HTTP_200_OK, summary='Rota base do projeto')
@@ -21,6 +22,41 @@ async def ver_todos_clientes():
 async def ver_todos_prestadores():
     result = await listagem_prestadores()
     return {'prestadores': result}
+
+@router.get('/ver_avaliacoes_hands', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todas avaliações')
+async def ver_avaliacoes_hands():
+    result = await listagem_avaliacoes_hands()
+    return {'avaliacoes': result}
+
+@router.get('/ver_avaliacoes_clientes', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todas avaliações clientes')
+async def ver_avaliacoes_clientes():
+    result = await listagem_avaliacoes_clientes()
+    return {'avaliacoes': result}
+
+@router.get('/ver_avaliacoes_prestadores', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todas avaliações prestadores')
+async def ver_avaliacoes_prestadores():
+    result = await listagem_avaliacoes_prestadores()
+    return {'avaliacoes': result}
+
+@router.get('/ver_minhas_avaliacoes_cliente/{email}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver avaliações recebidas (cliente)')
+async def ver_minhas_avaliacoes_cliente(email:str):
+    result,total_avaliacoes = await ver_avaliacoes_recebidas('feedback_cliente',email)
+    return {'avaliacoes_recebidas': result, 'total':total_avaliacoes}
+
+@router.get('/ver_minhas_avaliacoes_prestador/{email}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver avaliações recebidas (prestador)')
+async def ver_minhas_avaliacoes_prestador(email:str):
+    result,total_avaliacoes = await ver_avaliacoes_recebidas('feedback_prestador',email)
+    return {'avaliacoes_recebidas': result,'total':total_avaliacoes }
+
+@router.get('/ver_avaliacoes_preenchidas_cliente/{email}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver avaliações feitas (cliente)')
+async def ver_avaliacoes_preenchidas_cliente(email:str):
+    result,total_avaliacoes = await ver_avaliacoes_entregues('feedback_cliente',email)
+    return {'avaliacoes_recebidas': result, 'total':total_avaliacoes}
+
+@router.get('/ver_avaliacoes_preenchidas_prestador/{email}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver avaliações recebidas (prestador)')
+async def ver_avaliacoes_preenchidas_prestador(email:str):
+    result,total_avaliacoes = await ver_avaliacoes_entregues('feedback_prestador',email)
+    return {'avaliacoes_recebidas': result,'total':total_avaliacoes }
 
 # Rotas POST
 @router.post('/cadastrar_cliente', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Cadastro de clientes')
@@ -59,6 +95,21 @@ async def cadastro_prestador(prestador: Prestador):
     if "Erro" in resultado:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=resultado)
     return {'message': f'Sucesso ao cadastrar o prestador: {prestador.nome}'}
+
+@router.post("/avaliar_hands", tags=["POST"], summary="Avaliar o hands", status_code=status.HTTP_201_CREATED)
+async def avaliar_hands_endpoint(avaliar: Avaliacao):
+    res = await avaliar_hands(avaliar.email, avaliar.nota, avaliar.mensagem)
+    return {'id_resultado': str(res)}
+
+@router.post("/avaliar_prestador", tags=["POST"], summary="Avaliar prestadores", status_code=status.HTTP_201_CREATED)
+async def avaliar_prestador(avaliar: AvaliacaoPessoas):
+    res = await avaliar_pessoas("feedback_prestador", avaliar.de,avaliar.para,  avaliar.nota, avaliar.mensagem)
+    return {'id_resultado': str(res)}
+
+@router.post("/avaliar_clientes", tags=["POST"], summary="Avaliar prestadores", status_code=status.HTTP_201_CREATED)
+async def avaliar_clientes(avaliar: AvaliacaoPessoas):
+    res = await avaliar_pessoas("feedback_cliente", avaliar.de,avaliar.para,  avaliar.nota)
+    return {'id_resultado': str(res)}
 
 # Rotas PATCH
 @router.patch('/atualizar_cliente', tags=["PATCH"], status_code=status.HTTP_202_ACCEPTED, summary="Atualizando dados do cliente")
