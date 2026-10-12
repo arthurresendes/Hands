@@ -6,6 +6,11 @@ import { MailIcon, LockIcon } from '../components/icons'
 export default function LoginProvider() {
   const navigate = useNavigate()
 
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    navigate('/prestador/clientes')
+  }
+
   return (
     <AuthLayout
       badge="Área do Profissional"
@@ -18,7 +23,7 @@ export default function LoginProvider() {
       </h1>
       <p className="text-sm text-gray-500 mb-8">Acesse seu painel de prestador de serviços</p>
 
-      <form className="space-y-5">
+      <form className="space-y-5" onSubmit={handleLogin}>
         <FormField label="E-mail" type="email" placeholder="seuemail@exemplo.com" Icon={MailIcon} />
         <FormField label="Senha" type="password" placeholder="Digite sua senha" Icon={LockIcon} />
 
