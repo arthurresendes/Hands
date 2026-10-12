@@ -1,7 +1,14 @@
 import FormField from '../components/FormField'
 import { ShieldLockIcon, MailIcon, LockIcon } from '../components/icons'
+import { useNavigate } from 'react-router-dom'
 
 export default function LoginAdmin() {
+  const navigate = useNavigate()
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    navigate('/admin/painel')
+  }
   return (
     <div className="min-h-screen bg-[#1F2937] flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
@@ -15,7 +22,7 @@ export default function LoginAdmin() {
           <p className="text-white/50 text-sm mt-2 text-center">Área restrita à equipe Hands</p>
         </div>
 
-        <form className="space-y-5 bg-white rounded-2xl p-8 shadow-2xl">
+        <form className="space-y-5 bg-white rounded-2xl p-8 shadow-2xl" onSubmit={handleLogin}>
           <FormField label="E-mail administrativo" type="email" placeholder="admin@hands.com" Icon={MailIcon} />
           <FormField label="Senha" type="password" placeholder="Digite sua senha" Icon={LockIcon} />
 

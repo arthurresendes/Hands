@@ -6,6 +6,11 @@ import { MailIcon, LockIcon } from '../components/icons'
 export default function LoginClient() {
   const navigate = useNavigate()
 
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    navigate('/cliente/buscar')
+  }
+
   return (
     <AuthLayout
       badge="Área do Cliente"
@@ -18,7 +23,7 @@ export default function LoginClient() {
       </h1>
       <p className="text-sm text-gray-500 mb-8">Acesse sua conta para buscar profissionais</p>
 
-      <form className="space-y-5">
+      <form className="space-y-5" onSubmit={handleLogin}>
         <FormField label="E-mail" type="email" placeholder="seuemail@exemplo.com" Icon={MailIcon} />
         <FormField label="Senha" type="password" placeholder="Digite sua senha" Icon={LockIcon} />
 
