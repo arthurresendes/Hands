@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Logo from './Logo'
-import { GridIcon, UsersIcon, BriefcaseIcon, FlagIcon, MenuIcon, CloseIcon, LogoutIcon, ShieldLockIcon } from './icons'
+import { GridIcon, UsersIcon, BriefcaseIcon, StarOutlineIcon, MenuIcon, CloseIcon, LogoutIcon, ShieldLockIcon } from './icons'
 
 const navLinks = [
   { label: 'Dashboard', path: '/admin/painel', Icon: GridIcon },
   { label: 'Clientes', path: '/admin/clientes', Icon: UsersIcon },
   { label: 'Prestadores', path: '/admin/prestadores', Icon: BriefcaseIcon },
-  { label: 'Conteúdo', path: '/admin/conteudo', Icon: FlagIcon },
+  { label: 'Avaliações do Hands', path: '/admin/avaliacoes', Icon: StarOutlineIcon },
 ]
 
 export default function AdminLayout({ title, subtitle, children }) {

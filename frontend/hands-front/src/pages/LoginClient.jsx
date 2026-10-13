@@ -32,7 +32,7 @@ export default function LoginClient() {
             <input type="checkbox" readOnly className="rounded border-gray-300" />
             Lembrar de mim
           </label>
-          <button type="button" className="text-[#5B2EFF] font-semibold">Esqueci minha senha</button>
+          <button type="button" onClick={() => navigate('/recuperar-senha/cliente')} className="text-[#5B2EFF] font-semibold">Esqueci minha senha</button>
         </div>
 
         <button

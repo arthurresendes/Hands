@@ -32,7 +32,7 @@ export default function LoginProvider() {
             <input type="checkbox" readOnly className="rounded border-gray-300" />
             Lembrar de mim
           </label>
-          <button type="button" className="text-[#5B2EFF] font-semibold">Esqueci minha senha</button>
+          <button type="button" onClick={() => navigate('/recuperar-senha/prestador')} className="text-[#5B2EFF] font-semibold">Esqueci minha senha</button>
         </div>
 
         <button
