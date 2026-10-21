@@ -5,6 +5,7 @@ from bson.errors import InvalidId
 from fastapi import HTTPException, status
 from core.security import gerar_senha_hash
 from src.mongo.criacao import validar_cpf,pegar_dados_cep
+from datetime import datetime
 
 protecao_dados_sensiveis = {
         'senha': 0,
@@ -117,8 +118,8 @@ async def deletar_por_email(collection_name: str, email: str):
         )
     return
 
-async def avaliar_hands(email: str, nota: float, mensagem: str):
-    result = await feedback_hands_col.insert_one({'avaliador': email, 'nota': nota, 'mensagem': mensagem})
+async def avaliar_hands(email: str, facilidade: float,qualidade: float, confiabilidade: float, nota: float,mensagem: str):
+    result = await feedback_hands_col.insert_one({'avaliador': email, 'nota': {'facilidade': facilidade, 'qualidade': qualidade ,'confiabilidade': confiabilidade, 'notaGeral': nota}, 'mensagem': mensagem, 'data_avaliacao': datetime.now()})
     return result.inserted_id
 
 async def avaliar_pessoas(collectionName,de: str,para: str, nota: float, mensagem: str):
@@ -142,8 +143,28 @@ async def ver_avaliacoes_recebidas(collectionName, email: str):
     total_elementos = len(res)
     return res,total_elementos
 
-# Queries da página inicial (Landing)
-# Projeções públicas: nunca expõem e-mail, cpf, cep ou senha na página aberta ao público
+async def top_3_prestadores_mais_bem_avaliados():
+    cursor = feedback_prestador_col.find().sort("nota", -1).limit(3)
+    notas_prestadores = {}
+    async for r in cursor:
+        notas_prestadores[r["avaliado"]] = r["nota"]
+    lista_res_prestadores = []
+    for email, nota in notas_prestadores.items():
+        prestador_info = await prestador_col.find_one({"email": email})
+        if prestador_info:
+            prestador_info["_id"] = str(prestador_info["_id"])
+            prestador_info["nota"] = nota 
+            lista_res_prestadores.append(prestador_info)     
+    return lista_res_prestadores
+
+async def total_clientes():
+    total = await cliente_col.count_documents({})
+    return total
+
+async def total_prestadores():
+    total = await prestador_col.count_documents({})
+    return total
+
 projecao_publica_pessoa = {'nome': 1, 'endereco.cidade': 1, 'endereco.estado': 1}
 projecao_publica_prestador = {'nome': 1, 'servicos': 1, 'endereco.cidade': 1, 'endereco.estado': 1}
 

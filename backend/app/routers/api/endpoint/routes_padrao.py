@@ -1,5 +1,5 @@
 from fastapi import APIRouter,status,HTTPException,Request
-from src.mongo.query import listagem_clientes,listagem_prestadores,deletar_por_email, busca_especifica_cliente,busca_especifica_prestador,atualizar,atualizar_senha,atualizar_cpf,atualizar_cep,avaliar_hands, listagem_avaliacoes_hands,avaliar_pessoas,listagem_avaliacoes_clientes,listagem_avaliacoes_prestadores,ver_avaliacoes_recebidas,ver_avaliacoes_entregues,estatisticas_landing,categorias_populares,prestadores_destaque,avaliacoes_hands_landing
+from src.mongo.query import listagem_clientes,listagem_prestadores,deletar_por_email, busca_especifica_cliente,busca_especifica_prestador,atualizar,atualizar_senha,atualizar_cpf,atualizar_cep,avaliar_hands, listagem_avaliacoes_hands,avaliar_pessoas,listagem_avaliacoes_clientes,listagem_avaliacoes_prestadores,ver_avaliacoes_recebidas,ver_avaliacoes_entregues,total_prestadores,total_clientes,estatisticas_landing,categorias_populares,prestadores_destaque,avaliacoes_hands_landing
 from src.mongo.criacao import adicionar_cliente,adicionar_prestador
 from schemas.Cadastro import Cliente,Prestador
 from schemas.Atualizar import AtualizarCliente,AtualizarPrestador
@@ -22,6 +22,16 @@ async def ver_todos_clientes():
 async def ver_todos_prestadores():
     result = await listagem_prestadores()
     return {'prestadores': result}
+
+@router.get("/total_clientes", tags=["GET"], status_code=status.HTTP_200_OK, summary='Ver total de clientes na plataforma')
+async def ver_total_cliente_api():
+    total = await total_clientes()
+    return {"totalClientes": total}
+
+@router.get("/total_prestadores", tags=["GET"], status_code=status.HTTP_200_OK, summary='Ver total de prestadores na plataforma')
+async def ver_total_prestadores_api():
+    total = await total_prestadores()
+    return {"totalPrestadores": total}
 
 @router.get('/ver_avaliacoes_hands', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todas avaliações')
 async def ver_avaliacoes_hands():
@@ -116,7 +126,7 @@ async def cadastro_prestador(prestador: Prestador):
 
 @router.post("/avaliar_hands", tags=["POST"], summary="Avaliar o hands", status_code=status.HTTP_201_CREATED)
 async def avaliar_hands_endpoint(avaliar: Avaliacao):
-    res = await avaliar_hands(avaliar.email, avaliar.nota, avaliar.mensagem)
+    res = await avaliar_hands(avaliar.email,avaliar.facilidade, avaliar.qualidade, avaliar.confiabilidade ,avaliar.notaGeral, avaliar.mensagem)
     return {'id_resultado': str(res)}
 
 @router.post("/avaliar_prestador", tags=["POST"], summary="Avaliar prestadores", status_code=status.HTTP_201_CREATED)

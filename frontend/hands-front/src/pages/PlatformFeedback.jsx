@@ -4,8 +4,7 @@ import { SendIcon } from '../components/icons'
 
 const criterios = [
   'Facilidade de uso',
-  'Qualidade dos profissionais',
-  'Rapidez no atendimento',
+  'Qualidade do site',
   'Confiabilidade da plataforma',
 ]
 

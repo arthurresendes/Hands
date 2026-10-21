@@ -4,7 +4,6 @@ const ratingBars = [
   { label: 'Pontualidade', pct: 95 },
   { label: 'Qualidade do serviço', pct: 92 },
   { label: 'Educação e atendimento', pct: 97 },
-  { label: 'Custo-benefício', pct: 89 },
 ]
 
 const reviews = [
