@@ -1,12 +1,20 @@
-from fastapi import APIRouter,status,HTTPException,Request
+from fastapi import APIRouter,status,HTTPException,Request,Depends,Form,File,UploadFile,Response
+from fastapi.responses import FileResponse
 from src.mongo.query import listagem_clientes,listagem_prestadores,deletar_por_email, busca_especifica_cliente,busca_especifica_prestador,atualizar,atualizar_senha,atualizar_cpf,atualizar_cep,avaliar_hands, listagem_avaliacoes_hands,avaliar_pessoas,listagem_avaliacoes_clientes,listagem_avaliacoes_prestadores,ver_avaliacoes_recebidas,ver_avaliacoes_entregues,total_prestadores,total_clientes,estatisticas_landing,categorias_populares,prestadores_destaque,avaliacoes_hands_landing
 from src.mongo.criacao import adicionar_cliente,adicionar_prestador
 from schemas.Cadastro import Cliente,Prestador
 from schemas.Atualizar import AtualizarCliente,AtualizarPrestador
 from schemas.Avaliar import Avaliacao,AvaliacaoPessoas
 from core.database import cliente_col,prestador_col
+from core.auth import criar_token_acesso,setar_cookie_acesso
+from core.deps import exigir_usuario,get_token_payload,obter_token_do_cookie
+from src.armazenamento import preparar_foto,salvar_foto,caminho_foto,remover_foto
 
 router = APIRouter(prefix="/api/v1")
+
+def garantir_dono_ou_admin(usuario: dict, email: str):
+    if usuario['role'] != 'admin' and usuario.get('email') != email.strip():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não autorizado a este recurso.")
 
 # Rotas GET
 @router.get('/', tags=['GET'], status_code=status.HTTP_200_OK, summary='Rota base do projeto')
@@ -14,12 +22,12 @@ async def rota_base():
     return {'Projeto': 'Hands - Marktplace de serviços'}
 
 @router.get('/ver_todos_clientes', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todos os clientes cadastrados')
-async def ver_todos_clientes():
+async def ver_todos_clientes(usuario: dict = Depends(exigir_usuario('admin'))):
     result = await listagem_clientes()
     return {'clientes': result}
 
 @router.get('/ver_todos_prestadores', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todos os prestadores cadastrados')
-async def ver_todos_prestadores():
+async def ver_todos_prestadores(usuario: dict = Depends(exigir_usuario())):
     result = await listagem_prestadores()
     return {'prestadores': result}
 
@@ -34,37 +42,39 @@ async def ver_total_prestadores_api():
     return {"totalPrestadores": total}
 
 @router.get('/ver_avaliacoes_hands', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todas avaliações')
-async def ver_avaliacoes_hands():
+async def ver_avaliacoes_hands(usuario: dict = Depends(exigir_usuario('admin'))):
     result = await listagem_avaliacoes_hands()
     return {'avaliacoes': result}
 
 @router.get('/ver_avaliacoes_clientes', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todas avaliações clientes')
-async def ver_avaliacoes_clientes():
+async def ver_avaliacoes_clientes(usuario: dict = Depends(exigir_usuario('admin'))):
     result = await listagem_avaliacoes_clientes()
     return {'avaliacoes': result}
 
 @router.get('/ver_avaliacoes_prestadores', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todas avaliações prestadores')
-async def ver_avaliacoes_prestadores():
+async def ver_avaliacoes_prestadores(usuario: dict = Depends(exigir_usuario('admin'))):
     result = await listagem_avaliacoes_prestadores()
     return {'avaliacoes': result}
 
 @router.get('/ver_minhas_avaliacoes_cliente/{email}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver avaliações recebidas (cliente)')
-async def ver_minhas_avaliacoes_cliente(email:str):
+async def ver_minhas_avaliacoes_cliente(email:str, usuario: dict = Depends(exigir_usuario())):
     result,total_avaliacoes = await ver_avaliacoes_recebidas('feedback_cliente',email)
     return {'avaliacoes_recebidas': result, 'total':total_avaliacoes}
 
 @router.get('/ver_minhas_avaliacoes_prestador/{email}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver avaliações recebidas (prestador)')
-async def ver_minhas_avaliacoes_prestador(email:str):
+async def ver_minhas_avaliacoes_prestador(email:str, usuario: dict = Depends(exigir_usuario())):
     result,total_avaliacoes = await ver_avaliacoes_recebidas('feedback_prestador',email)
     return {'avaliacoes_recebidas': result,'total':total_avaliacoes }
 
 @router.get('/ver_avaliacoes_preenchidas_cliente/{email}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver avaliações feitas (cliente)')
-async def ver_avaliacoes_preenchidas_cliente(email:str):
+async def ver_avaliacoes_preenchidas_cliente(email:str, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
+    garantir_dono_ou_admin(usuario, email)
     result,total_avaliacoes = await ver_avaliacoes_entregues('feedback_cliente',email)
     return {'avaliacoes_recebidas': result, 'total':total_avaliacoes}
 
 @router.get('/ver_avaliacoes_preenchidas_prestador/{email}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver avaliações recebidas (prestador)')
-async def ver_avaliacoes_preenchidas_prestador(email:str):
+async def ver_avaliacoes_preenchidas_prestador(email:str, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
+    garantir_dono_ou_admin(usuario, email)
     result,total_avaliacoes = await ver_avaliacoes_entregues('feedback_prestador',email)
     return {'avaliacoes_recebidas': result,'total':total_avaliacoes }
 
@@ -86,62 +96,119 @@ async def landing_prestadores_destaque():
 async def landing_avaliacoes_hands():
     return await avaliacoes_hands_landing()
 
+@router.get('/foto/{papel}/{id_usuario}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Foto de perfil de cliente ou prestador')
+async def ver_foto(papel: str, id_usuario: str, request: Request):
+    if papel == 'cliente':
+        await get_token_payload(await obter_token_do_cookie(request))
+    caminho = caminho_foto(papel, id_usuario)
+    if caminho is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Foto não encontrada.")
+    return FileResponse(caminho, media_type='image/jpeg')
+
 # Rotas POST
 @router.post('/cadastrar_cliente', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Cadastro de clientes')
-async def cadastro_cliente(cliente: Cliente):
-    check_user = await cliente_col.find_one({'email': cliente.email})
+async def cadastro_cliente(
+    response: Response,
+    nome: str = Form(..., min_length=1),
+    email: str = Form(..., min_length=3),
+    celular: str = Form(..., min_length=1),
+    idade: int = Form(..., ge=0, le=130),
+    cep: str = Form(..., min_length=8),
+    cpf: str = Form(..., min_length=11),
+    informacoes: str = Form(''),
+    senha: str = Form(..., min_length=6),
+    foto: UploadFile | None = File(None),
+):
+    email = email.strip()
+    foto_pronta = await preparar_foto(foto)
+    check_user = await cliente_col.find_one({'email': email})
     if check_user is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Cliente com esse e-mail já cadastrado!"
         )
-    resultado = await adicionar_cliente(nome=cliente.nome, email=cliente.email,celular=cliente.celular, idade=cliente.idade, cep=cliente.cep, cpf=cliente.cpf, informacoes=cliente.informacoes, senha=cliente.senha)
+    resultado = await adicionar_cliente(nome=nome, email=email, celular=celular, idade=idade, cep=cep, cpf=cpf, informacoes=informacoes, senha=senha)
     if "Erro" in resultado:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=resultado)
-    return {'message': f'Sucesso ao cadastrar o cliente: {cliente.nome}'}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=resultado['Erro'])
+    if foto_pronta is not None:
+        salvar_foto('cliente', resultado['id'], foto_pronta)
+    setar_cookie_acesso(response, criar_token_acesso(sub=resultado['id'], role='cliente'))
+    return {'message': f'Sucesso ao cadastrar o cliente: {nome}', 'id': resultado['id'], 'role': 'cliente'}
 
 @router.post('/cadastrar_prestador', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Cadastro de prestador')
-async def cadastro_prestador(prestador: Prestador):
-    check_user = await prestador_col.find_one({'email': prestador.email})
+async def cadastro_prestador(
+    response: Response,
+    nome: str = Form(..., min_length=1),
+    email: str = Form(..., min_length=3),
+    celular: str = Form(..., min_length=1),
+    idade: int = Form(..., ge=0, le=130),
+    cep: str = Form(..., min_length=8),
+    cpf: str = Form(..., min_length=11),
+    informacoes: str = Form(''),
+    valor: float = Form(..., ge=0),
+    senha: str = Form(..., min_length=6),
+    servicos: list[str] = Form(...),
+    idiomas: list[str] = Form([]),
+    certificacoes: list[str] = Form([]),
+    foto: UploadFile | None = File(None),
+):
+    email = email.strip()
+    if not servicos:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selecione o serviço oferecido.")
+    foto_pronta = await preparar_foto(foto)
+    check_user = await prestador_col.find_one({'email': email})
     if check_user is not None:
         raise HTTPException(
         status_code=status.HTTP_409_CONFLICT, detail="Prestador com esse email já cadastrado!"
         )
     resultado = await adicionar_prestador(
-        nome=prestador.nome,
-        email=prestador.email,
-        celular=prestador.celular,
-        idade=prestador.idade,
-        cep=prestador.cep,
-        cpf=prestador.cpf,
-        informacoes=prestador.informacoes,
-        valor=prestador.valor,
-        senha=prestador.senha,
-        servicos=prestador.servicos,
-        idiomas=prestador.idiomas,
-        certificacoes=prestador.certificacoes
+        nome=nome,
+        email=email,
+        celular=celular,
+        idade=idade,
+        cep=cep,
+        cpf=cpf,
+        informacoes=informacoes,
+        valor=valor,
+        senha=senha,
+        servicos=servicos,
+        idiomas=idiomas,
+        certificacoes=certificacoes or None
     )
     if "Erro" in resultado:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=resultado)
-    return {'message': f'Sucesso ao cadastrar o prestador: {prestador.nome}'}
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=resultado['Erro'])
+    if foto_pronta is not None:
+        salvar_foto('prestador', resultado['id'], foto_pronta)
+    setar_cookie_acesso(response, criar_token_acesso(sub=resultado['id'], role='prestador'))
+    return {'message': f'Sucesso ao cadastrar o prestador: {nome}', 'id': resultado['id'], 'role': 'prestador'}
+
+@router.post('/foto', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Enviar ou trocar a foto do usuário logado')
+async def enviar_foto(foto: UploadFile = File(...), usuario: dict = Depends(exigir_usuario('cliente','prestador'))):
+    foto_pronta = await preparar_foto(foto)
+    if foto_pronta is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envie uma imagem válida (JPG, PNG ou WEBP).")
+    salvar_foto(usuario['role'], usuario['id'], foto_pronta)
+    return {'message': 'Foto atualizada com sucesso.'}
 
 @router.post("/avaliar_hands", tags=["POST"], summary="Avaliar o hands", status_code=status.HTTP_201_CREATED)
-async def avaliar_hands_endpoint(avaliar: Avaliacao):
-    res = await avaliar_hands(avaliar.email,avaliar.facilidade, avaliar.qualidade, avaliar.confiabilidade ,avaliar.notaGeral, avaliar.mensagem)
+async def avaliar_hands_endpoint(avaliar: Avaliacao, usuario: dict = Depends(exigir_usuario('cliente','prestador'))):
+    res = await avaliar_hands(usuario['email'],avaliar.facilidade, avaliar.qualidade, avaliar.confiabilidade ,avaliar.notaGeral, avaliar.mensagem)
     return {'id_resultado': str(res)}
 
 @router.post("/avaliar_prestador", tags=["POST"], summary="Avaliar prestadores", status_code=status.HTTP_201_CREATED)
-async def avaliar_prestador(avaliar: AvaliacaoPessoas):
-    res = await avaliar_pessoas("feedback_prestador", avaliar.de,avaliar.para,  avaliar.nota, avaliar.mensagem)
+async def avaliar_prestador(avaliar: AvaliacaoPessoas, usuario: dict = Depends(exigir_usuario('cliente'))):
+    res = await avaliar_pessoas("feedback_prestador", usuario['email'], avaliar.para,  avaliar.nota, avaliar.mensagem)
     return {'id_resultado': str(res)}
 
-@router.post("/avaliar_clientes", tags=["POST"], summary="Avaliar prestadores", status_code=status.HTTP_201_CREATED)
-async def avaliar_clientes(avaliar: AvaliacaoPessoas):
-    res = await avaliar_pessoas("feedback_cliente", avaliar.de,avaliar.para,  avaliar.nota)
+@router.post("/avaliar_clientes", tags=["POST"], summary="Avaliar clientes", status_code=status.HTTP_201_CREATED)
+async def avaliar_clientes(avaliar: AvaliacaoPessoas, usuario: dict = Depends(exigir_usuario('prestador'))):
+    res = await avaliar_pessoas("feedback_cliente", usuario['email'], avaliar.para,  avaliar.nota, avaliar.mensagem)
     return {'id_resultado': str(res)}
 
 # Rotas PATCH
 @router.patch('/atualizar_cliente', tags=["PATCH"], status_code=status.HTTP_202_ACCEPTED, summary="Atualizando dados do cliente")
-async def atualizar_cliente(cliente: AtualizarCliente):
+async def atualizar_cliente(cliente: AtualizarCliente, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
+    if usuario['role'] != 'admin' and cliente.id != usuario['id']:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não autorizado a este recurso.")
     cliente_busca = await busca_especifica_cliente(cliente.id)
     collection_name = "cliente"
     if cliente_busca is None:
@@ -170,7 +237,9 @@ async def atualizar_cliente(cliente: AtualizarCliente):
     return cliente_atualizado
 
 @router.patch('/atualizar_prestador', tags=["PATCH"], status_code=status.HTTP_202_ACCEPTED, summary="Atualizando dados do prestador")
-async def atualizar_prestador(prestador: AtualizarPrestador):
+async def atualizar_prestador(prestador: AtualizarPrestador, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
+    if usuario['role'] != 'admin' and prestador.id != usuario['id']:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não autorizado a este recurso.")
     prestador_busca = await busca_especifica_prestador(prestador.id)
     collection_name = "prestador"
     if prestador_busca is None:
@@ -208,9 +277,13 @@ async def atualizar_prestador(prestador: AtualizarPrestador):
 
 # Rotas DELETE
 @router.delete('/deletar_prestador/{email}', tags=["DELETE"], status_code=status.HTTP_204_NO_CONTENT, summary="Deletando prestador por email")
-async def deletar_prestador(email: str):
+async def deletar_prestador(email: str, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
+    garantir_dono_ou_admin(usuario, email)
     try:
+        alvo = await prestador_col.find_one({'email': email.strip()}, {'_id': 1})
         resultado = await deletar_por_email('prestador', email)
+        if alvo is not None:
+            remover_foto('prestador', str(alvo['_id']))
         return resultado
     except HTTPException:
         raise 
@@ -221,9 +294,13 @@ async def deletar_prestador(email: str):
         )
 
 @router.delete('/deletar_cliente/{email}', tags=["DELETE"], status_code=status.HTTP_204_NO_CONTENT, summary="Deletando cliente por email")
-async def deletar_cliente(email: str):
+async def deletar_cliente(email: str, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
+    garantir_dono_ou_admin(usuario, email)
     try:
+        alvo = await cliente_col.find_one({'email': email.strip()}, {'_id': 1})
         resultado = await deletar_por_email('cliente', email)
+        if alvo is not None:
+            remover_foto('cliente', str(alvo['_id']))
     except HTTPException:
         raise
     except Exception as error:

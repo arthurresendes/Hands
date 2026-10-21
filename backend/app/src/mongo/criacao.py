@@ -66,7 +66,7 @@ async def adicionar_cliente(nome: str, email: str,celular: str, idade: int, cep:
                 {'cep': cep, 'rua': resultado_cep ['rua'], 'cidade': resultado_cep ['cidade'], 'estado': resultado_cep['estado'], 'latitude': resultado_cep['lat'], 'longitude': resultado_cep['lon']}
             ], 'cpf': cpf, 'informacoes': informacoes, 'senha': gerar_senha_hash(senha), 'data_criacao': datetime.now()}
     insercao = await cliente_col.insert_one(cliente_add)
-    return {'Sucesso': f'Cliente adicionado com o id: {insercao.inserted_id}'}
+    return {'Sucesso': f'Cliente adicionado com o id: {insercao.inserted_id}', 'id': str(insercao.inserted_id)}
 
 async def adicionar_prestador(nome: str, email: str,celular: str, idade: int, cep: str, cpf: str,informacoes: str,valor: float, senha: str,servicos: list[str],idiomas: list[str],certificacoes: list[str] | None = None):
     validacao_cpf_prestador = await validar_cpf(cpf)
@@ -79,7 +79,7 @@ async def adicionar_prestador(nome: str, email: str,celular: str, idade: int, ce
                 {'cep': cep, 'rua': resultado_cep ['rua'], 'cidade': resultado_cep ['cidade'], 'estado': resultado_cep['estado'], 'latitude': resultado_cep['lat'], 'longitude': resultado_cep['lon']}
             ], 'cpf': cpf, 'informacoes': informacoes,'valor':valor,'servicos': servicos,'idiomas': idiomas ,'certificados': certificacoes,'senha': gerar_senha_hash(senha), 'data_criacao': datetime.now()}
     insercao = await prestador_col.insert_one(prestador_add)
-    return {'Sucesso': f'Prestador adicionado com o id: {insercao.inserted_id}'}
+    return {'Sucesso': f'Prestador adicionado com o id: {insercao.inserted_id}', 'id': str(insercao.inserted_id)}
 
 async def criar_index(collection_fun: str, indice: str):
     collection = db[collection_fun]
