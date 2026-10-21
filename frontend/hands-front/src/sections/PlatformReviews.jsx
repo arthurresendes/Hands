@@ -1,9 +1,7 @@
 const ratingBars = [
   { label: 'Facilidade de uso', pct: 96 },
-  { label: 'Qualidade dos profissionais', pct: 93 },
-  { label: 'Rapidez no atendimento', pct: 91 },
+  { label: 'Qualidade do site', pct: 93 },
   { label: 'Confiabilidade da plataforma', pct: 95 },
-  { label: 'Custo-benefício', pct: 94 },
 ]
 
 const indicators = [
@@ -13,12 +11,9 @@ const indicators = [
 ]
 
 const reviews = [
-  { text: 'A plataforma é muito intuitiva. Em menos de 5 minutos achei um pintor disponível na minha rua. Nunca foi tão fácil!', author: 'Beatriz Carvalho', city: 'São Paulo, SP', badge: 'Cliente verificado' },
-  { text: 'Finalmente um app que respeita tanto o cliente quanto o profissional. Sem taxas abusivas e contato direto. Perfeito!', author: 'Roberto Nascimento', city: 'Guarulhos, SP', badge: 'Usuário desde 2025' },
-  { text: 'Meu negócio de eletricidade cresceu muito depois que entrei no Hands. Recebo contatos todos os dias sem pagar nada.', author: 'Eduardo Fonseca', city: 'ABC Paulista, SP', badge: 'Prestador verificado' },
-  { text: 'O processo de verificação dos profissionais me dá muita segurança. Já contratei 4 vezes e sempre fui bem atendida.', author: 'Fernanda Lopes', city: 'Campinas, SP', badge: 'Cliente verificado' },
-  { text: 'Super recomendo! Interface limpa, profissionais bem avaliados e tudo transparente. Muito melhor que outros apps.', author: 'Alexandre Mota', city: 'Santos, SP', badge: 'Usuário desde 2025' },
-  { text: 'Como diarista, o Hands mudou minha vida. Tenho agenda cheia e não perco dinheiro com taxas. Obrigada pelo espaço!', author: 'Conceição Alves', city: 'São Paulo, SP', badge: 'Prestadora verificada' },
+  { text: 'O processo de verificação dos profissionais me dá muita segurança. Já contratei 4 vezes e sempre fui bem atendida.', author: 'Fernanda Lopes', city: 'Campinas, SP', badge: 'Usuário desde 2026' },
+  { text: 'Super recomendo! Interface limpa, profissionais bem avaliados e tudo transparente. Muito melhor que outros apps.', author: 'Alexandre Mota', city: 'Santos, SP', badge: 'Usuário desde 2026' },
+  { text: 'Como diarista, o Hands mudou minha vida. Tenho agenda cheia e não perco dinheiro com taxas. Obrigada pelo espaço!', author: 'Conceição Alves', city: 'São Paulo, SP', badge: 'Usuário desde 2026' },
 ]
 
 function StarRow() {

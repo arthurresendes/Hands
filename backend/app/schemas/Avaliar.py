@@ -2,7 +2,10 @@ from pydantic import BaseModel
 
 class Avaliacao(BaseModel):
     email: str
-    nota: float
+    facilidade: float
+    qualidade: float
+    confiabilidade: float
+    notaGeral: float
     mensagem: str
 
 class AvaliacaoPessoas(BaseModel):

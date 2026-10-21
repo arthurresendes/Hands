@@ -2,9 +2,9 @@ import { useNavigate } from 'react-router-dom'
 import { CheckIcon, PinIcon } from '../components/icons'
 
 const professionals = [
-  { name: 'Marcos Silva', role: 'Eletricista Residencial', rating: 4.9, reviews: 142, city: 'São Paulo, SP', tag: 'Verificado' },
-  { name: 'Ana Paula Costa', role: 'Diarista & Organizadora', rating: 5.0, reviews: 98, city: 'São Paulo, SP', tag: 'Top Avaliada' },
-  { name: 'Ricardo Souza', role: 'Encanador Hidráulico', rating: 4.8, reviews: 210, city: 'Guarulhos, SP', tag: 'Verificado' },
+  { name: 'Marcos Silva', role: 'Eletricista', rating: 4.9, reviews: 142, city: 'São Paulo, SP', tag: 'Top Avaliado' },
+  { name: 'Ana Paula Costa', role: 'Diarista & Organizadora', rating: 5.0, reviews: 98, city: 'São Paulo, SP', tag: 'Top Avaliado' },
+  { name: 'Ricardo Souza', role: 'Encanador', rating: 4.8, reviews: 210, city: 'Guarulhos, SP', tag: 'Top Avaliado' },
 ]
 
 function Stars({ rating }) {
