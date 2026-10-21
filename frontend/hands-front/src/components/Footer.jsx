@@ -3,7 +3,6 @@ import Logo from './Logo'
 
 const socialLinks = ['linkedin', 'linkedin', 'linkedin', 'linkedin']
 const plataformaLinks = ['Como funciona', 'Categorias', 'Profissionais', 'Diferenciais']
-const suporteLinks = []
 const profissionalLinks = ['Cadastre-se', 'Como funciona']
 
 export default function Footer() {
@@ -12,7 +11,7 @@ export default function Footer() {
   return (
     <footer className="bg-[#1F2937] text-white">
       <div className="max-w-7xl mx-auto px-6 pt-16 pb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-12">
           <div className="lg:col-span-1">
             <Logo height={64} light />
             <p className="mt-4 text-sm text-gray-400 leading-relaxed">
@@ -20,9 +19,9 @@ export default function Footer() {
               Facilitando conexões humanas e valorizando o trabalho local.
             </p>
             <div className="flex gap-3 mt-6">
-              {socialLinks.map((s) => (
+              {socialLinks.map((s, i) => (
                 <a
-                  key={s}
+                  key={`${s}-${i}`}
                   href="#"
                   className="w-9 h-9 rounded-lg bg-white/10 hover:bg-[#5B2EFF] flex items-center justify-center transition-colors"
                   aria-label={s}
@@ -37,17 +36,6 @@ export default function Footer() {
             <h4 className="text-sm font-semibold text-white mb-5 uppercase tracking-wider">Plataforma</h4>
             <ul className="space-y-3">
               {plataformaLinks.map((i) => (
-                <li key={i}>
-                  <a href="#" className="text-sm text-gray-400 hover:text-white transition-colors">{i}</a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-semibold text-white mb-5 uppercase tracking-wider"></h4>
-            <ul className="space-y-3">
-              {suporteLinks.map((i) => (
                 <li key={i}>
                   <a href="#" className="text-sm text-gray-400 hover:text-white transition-colors">{i}</a>
                 </li>

@@ -15,6 +15,12 @@ function StarRow({ nota, size = 14, className = 'gap-0.5 mb-4' }) {
   )
 }
 
+const criterios = [
+  { chave: 'facilidade', label: 'Facilidade de uso' },
+  { chave: 'qualidade', label: 'Qualidade do site' },
+  { chave: 'confiabilidade', label: 'Confiabilidade da plataforma' },
+]
+
 function satisfacaoGeral(media) {
   if (media >= 4.5) return 'Ótimo'
   if (media >= 4) return 'Muito bom'
@@ -61,17 +67,19 @@ export default function PlatformReviews() {
           </div>
           <div className="flex-1">
             <div className="space-y-3">
-              {(resumo?.distribuicao ?? [5, 4, 3, 2, 1].map((estrelas) => ({ estrelas, percentual: 0 }))).map((item) => (
-                <div key={item.estrelas} className="flex items-center gap-4">
-                  <span className="text-sm text-gray-600 w-52 flex-shrink-0">
-                    {item.estrelas} {item.estrelas === 1 ? 'estrela' : 'estrelas'}
-                  </span>
-                  <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-2.5 bg-[#5B2EFF] rounded-full" style={{ width: `${item.percentual}%` }} />
+              {criterios.map((c) => {
+                const media = resumo?.criterios?.[c.chave]
+                const percentual = media ? Math.round((media / 5) * 100) : 0
+                return (
+                  <div key={c.chave} className="flex items-center gap-4">
+                    <span className="text-sm text-gray-600 w-52 flex-shrink-0">{c.label}</span>
+                    <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-2.5 bg-[#5B2EFF] rounded-full" style={{ width: `${percentual}%` }} />
+                    </div>
+                    <span className="text-sm font-bold text-[#5B2EFF] w-10 text-right">{media ? `${percentual}%` : '—'}</span>
                   </div>
-                  <span className="text-sm font-bold text-[#5B2EFF] w-10 text-right">{item.percentual}%</span>
-                </div>
-              ))}
+                )
+              })}
             </div>
             <div className="flex gap-4 mt-6">
               {indicators.map((s) => (

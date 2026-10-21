@@ -5,7 +5,7 @@ from bson.errors import InvalidId
 from fastapi import HTTPException, status
 from core.security import gerar_senha_hash
 from src.mongo.criacao import validar_cpf,pegar_dados_cep
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 protecao_dados_sensiveis = {
         'senha': 0,
@@ -176,58 +176,53 @@ def formatar_cidade(doc: dict):
     estado = endereco[0].get('estado')
     return ', '.join(parte for parte in (cidade, estado) if parte) or None
 
+def extrair_nota_geral(nota):
+    if isinstance(nota, dict):
+        return nota.get('notaGeral')
+    return nota
+
 async def resumo_avaliacoes_hands():
-    pipeline_resumo = [{
-        '$group': {
+    pipeline = [
+        {'$addFields': {
+            'nota_geral': {'$cond': [{'$isNumber': '$nota'}, '$nota', '$nota.notaGeral']}
+        }},
+        {'$match': {'nota_geral': {'$type': 'number'}}},
+        {'$group': {
             '_id': None,
-            'media': {'$avg': '$nota'},
+            'media': {'$avg': '$nota_geral'},
             'total': {'$sum': 1},
-            'recomendam': {'$sum': {'$cond': [{'$gte': ['$nota', 4]}, 1, 0]}}
-        }
-    }]
-    # Arredondamento "meio para cima" (4.5 -> 5 estrelas) para montar a distribuição por estrelas
-    pipeline_distribuicao = [{
-        '$group': {
-            '_id': {'$floor': {'$add': ['$nota', 0.5]}},
-            'total': {'$sum': 1}
-        }
-    }]
-    resumo = await feedback_hands_col.aggregate(pipeline_resumo).to_list(length=1)
-    por_nota = await feedback_hands_col.aggregate(pipeline_distribuicao).to_list(length=None)
-
-    contagem = {estrelas: 0 for estrelas in range(1, 6)}
-    for item in por_nota:
-        if item['_id'] is None:
-            continue
-        estrelas = min(5, max(1, int(item['_id'])))
-        contagem[estrelas] += item['total']
-    total_distribuicao = sum(contagem.values())
-    distribuicao = [
-        {
-            'estrelas': estrelas,
-            'total': contagem[estrelas],
-            'percentual': round(contagem[estrelas] / total_distribuicao * 100) if total_distribuicao else 0
-        }
-        for estrelas in range(5, 0, -1)
+            'recomendam': {'$sum': {'$cond': [{'$gte': ['$nota_geral', 4]}, 1, 0]}},
+            'facilidade': {'$avg': '$nota.facilidade'},
+            'qualidade': {'$avg': '$nota.qualidade'},
+            'confiabilidade': {'$avg': '$nota.confiabilidade'}
+        }}
     ]
-
-    if not resumo:
-        return {'media': 0, 'total': 0, 'taxa_recomendacao': 0, 'distribuicao': distribuicao}
-    total = resumo[0]['total']
+    resultado = await feedback_hands_col.aggregate(pipeline).to_list(length=1)
+    criterios_vazios = {'facilidade': None, 'qualidade': None, 'confiabilidade': None}
+    if not resultado:
+        return {'media': 0, 'total': 0, 'taxa_recomendacao': 0, 'criterios': criterios_vazios}
+    resumo = resultado[0]
+    total = resumo['total']
     return {
-        'media': round(resumo[0]['media'], 1),
+        'media': round(resumo['media'], 1),
         'total': total,
-        'taxa_recomendacao': round(resumo[0]['recomendam'] / total * 100),
-        'distribuicao': distribuicao
+        'taxa_recomendacao': round(resumo['recomendam'] / total * 100),
+        'criterios': {
+            chave: round(resumo[chave], 1) if resumo[chave] is not None else None
+            for chave in criterios_vazios
+        }
     }
 
 async def estatisticas_landing():
     total_prestadores = await prestador_col.count_documents({})
     total_clientes = await cliente_col.count_documents({})
+    inicio_periodo = ObjectId.from_datetime(datetime.now(timezone.utc) - timedelta(days=30))
+    novos_clientes_30_dias = await cliente_col.count_documents({'_id': {'$gte': inicio_periodo}})
     resumo = await resumo_avaliacoes_hands()
     return {
         'total_prestadores': total_prestadores,
         'total_clientes': total_clientes,
+        'novos_clientes_30_dias': novos_clientes_30_dias,
         'total_avaliacoes': resumo['total'],
         'nota_media': resumo['media'],
         'taxa_recomendacao': resumo['taxa_recomendacao']
@@ -309,6 +304,9 @@ async def avaliacoes_hands_landing(limite: int = 6):
 
     avaliacoes = []
     for doc in docs:
+        nota = extrair_nota_geral(doc.get('nota'))
+        if nota is None:
+            continue
         email = doc.get('avaliador')
         if email in clientes_por_email:
             autor, tipo = clientes_por_email[email], 'Cliente'
@@ -319,7 +317,7 @@ async def avaliacoes_hands_landing(limite: int = 6):
         avaliacoes.append({
             '_id': str(doc['_id']),
             'texto': doc['mensagem'].strip(),
-            'nota': doc['nota'],
+            'nota': nota,
             'autor': autor.get('nome') or 'Usuário Hands',
             'cidade': formatar_cidade(autor),
             'tipo': tipo
