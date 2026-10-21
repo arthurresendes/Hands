@@ -3,6 +3,7 @@ const API_URL = `${BASE_URL}/api/v1/atualizar_prestador`;
 
 export const atualizarDadosPrestador = async (dados) => {
   const response = await fetch(API_URL, {
+    credentials: "include",
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Logo from './Logo'
+import useAuth from '../hooks/useAuth'
 import { GridIcon, UsersIcon, BriefcaseIcon, StarOutlineIcon, MenuIcon, CloseIcon, LogoutIcon, ShieldLockIcon } from './icons'
 
 const navLinks = [
@@ -12,6 +13,11 @@ const navLinks = [
 
 export default function AdminLayout({ title, subtitle, children }) {
   const navigate = useNavigate()
+  const { usuario, logout } = useAuth()
+  const sair = async () => {
+    await logout()
+    navigate('/')
+  }
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
@@ -40,12 +46,12 @@ export default function AdminLayout({ title, subtitle, children }) {
               <ShieldLockIcon width={16} height={16} />
             </span>
             <div>
-              <p className="text-sm font-semibold text-white">Administrador</p>
+              <p className="text-sm font-semibold text-white">{usuario?.nome ?? 'Administrador'}</p>
               <p className="text-xs text-white/40">Acesso restrito</p>
             </div>
           </div>
           <button
-            onClick={() => navigate('/')}
+            onClick={sair}
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors"
           >
             <LogoutIcon width={16} height={16} />
@@ -75,7 +81,7 @@ export default function AdminLayout({ title, subtitle, children }) {
               </button>
             ))}
             <button
-              onClick={() => navigate('/')}
+              onClick={sair}
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-400 text-left"
             >
               <LogoutIcon width={16} height={16} />

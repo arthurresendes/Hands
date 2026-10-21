@@ -1,4 +1,4 @@
-export default function FormField({ label, type = 'text', placeholder, Icon }) {
+export default function FormField({ label, type = 'text', placeholder, Icon, ...props }) {
   return (
     <div>
       <label className="block text-sm font-semibold text-[#1F2937] mb-2">{label}</label>
@@ -12,6 +12,7 @@ export default function FormField({ label, type = 'text', placeholder, Icon }) {
           type={type}
           placeholder={placeholder}
           required
+          {...props}
           className={`w-full ${Icon ? 'pl-11' : 'pl-4'} pr-4 py-3.5 border border-gray-200 rounded-xl outline-none text-sm placeholder-gray-400 focus:border-[#5B2EFF] transition-colors`}
         />
       </div>

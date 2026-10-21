@@ -1,13 +1,15 @@
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-const API_URL = `${BASE_URL}/api/v1/total_clientes`;
+const API_URL = `${BASE_URL}/api/v1/avaliar_prestador`; 
 
-export const totalClientes = async () => {
+export const cadastroAvaliacaoPrestador = async (payload) => {
   const response = await fetch(API_URL, {
-    method: "GET",
+    credentials: "include",
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
+    body: JSON.stringify(payload),
   });
   const data = await response.json();
-  return data.totalClientes;
+  return data.id_resultado
 };
