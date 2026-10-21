@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import ClientLayout from '../components/ClientLayout'
 import { SearchIcon, PinIcon, FilterIcon } from '../components/icons'
 import { useEffect, useState } from 'react'
-import { listarPrestadores } from '../api/listagemPrestadores'
+import { listarPrestadores } from '../api/get/listagem/listagemPrestadores'
 
 const servicos = ['Eletricista', 'Encanador', 'Pintor', 'Diarista', 'Pedreiro', 'Jardineiro', 'Técnico de TI', 'Montador']
 
