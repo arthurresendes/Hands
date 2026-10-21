@@ -1,11 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { CheckIcon, PinIcon } from '../components/icons'
-
-const professionals = [
-  { name: 'Marcos Silva', role: 'Eletricista Residencial', rating: 4.9, reviews: 142, city: 'São Paulo, SP', tag: 'Verificado' },
-  { name: 'Ana Paula Costa', role: 'Diarista & Organizadora', rating: 5.0, reviews: 98, city: 'São Paulo, SP', tag: 'Top Avaliada' },
-  { name: 'Ricardo Souza', role: 'Encanador Hidráulico', rating: 4.8, reviews: 210, city: 'Guarulhos, SP', tag: 'Verificado' },
-]
+import useFetch from '../hooks/useFetch'
+import { getPrestadoresDestaque } from '../services/landing'
 
 function Stars({ rating }) {
   return (
@@ -19,8 +15,24 @@ function Stars({ rating }) {
   )
 }
 
+function tagPara(notaMedia) {
+  if (notaMedia === null) return 'Novo no Hands'
+  return notaMedia >= 4.8 ? 'Top Avaliado' : 'Em destaque'
+}
+
 export default function FeaturedProfessionals() {
   const navigate = useNavigate()
+  const { data, loading } = useFetch(getPrestadoresDestaque)
+
+  const professionals = (data ?? []).map((p) => ({
+    id: p._id,
+    name: p.nome,
+    role: p.servicos.slice(0, 2).join(' • ') || 'Prestador de serviços',
+    rating: p.nota_media,
+    reviews: p.total_avaliacoes,
+    city: p.cidade,
+    tag: tagPara(p.nota_media),
+  }))
 
   return (
     <section id="profissionais" className="py-24 bg-white">
@@ -41,10 +53,21 @@ export default function FeaturedProfessionals() {
             Ver todos
           </button>
         </div>
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-2xl bg-[#F3F4F6] h-96 animate-pulse" />
+            ))}
+          </div>
+        )}
+        {!loading && professionals.length === 0 && (
+          <p className="text-center text-gray-400 text-sm">Nenhum profissional disponível no momento.</p>
+        )}
+        {professionals.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {professionals.map((p) => (
             <div
-              key={p.name}
+              key={p.id}
               className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:shadow-gray-200 hover:-translate-y-1 transition-all group"
             >
               <div className="relative h-48 bg-[#F3F4F6] flex items-center justify-center overflow-hidden">
@@ -65,13 +88,21 @@ export default function FeaturedProfessionals() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mb-2">
-                  <Stars rating={p.rating} />
-                  <span className="text-sm font-bold text-[#1F2937]">{p.rating}</span>
-                  <span className="text-xs text-gray-400">({p.reviews} avaliações)</span>
+                  {p.rating === null ? (
+                    <span className="text-xs text-gray-400">Ainda sem avaliações</span>
+                  ) : (
+                    <>
+                      <Stars rating={p.rating} />
+                      <span className="text-sm font-bold text-[#1F2937]">{p.rating.toFixed(1)}</span>
+                      <span className="text-xs text-gray-400">
+                        ({p.reviews} {p.reviews === 1 ? 'avaliação' : 'avaliações'})
+                      </span>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-4">
                   <PinIcon width={12} height={12} />
-                  {p.city}
+                  {p.city ?? 'Localização não informada'}
                 </div>
                 <button
                   onClick={() => navigate('/login')}
@@ -83,6 +114,7 @@ export default function FeaturedProfessionals() {
             </div>
           ))}
         </div>
+        )}
       </div>
     </section>
   )
