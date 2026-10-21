@@ -1,5 +1,5 @@
 from fastapi import APIRouter,status,HTTPException,Request
-from src.mongo.query import listagem_clientes,listagem_prestadores,deletar_por_email, busca_especifica_cliente,busca_especifica_prestador,atualizar,atualizar_senha,atualizar_cpf,atualizar_cep,avaliar_hands, listagem_avaliacoes_hands,avaliar_pessoas,listagem_avaliacoes_clientes,listagem_avaliacoes_prestadores,ver_avaliacoes_recebidas,ver_avaliacoes_entregues,total_prestadores,total_clientes
+from src.mongo.query import listagem_clientes,listagem_prestadores,deletar_por_email, busca_especifica_cliente,busca_especifica_prestador,atualizar,atualizar_senha,atualizar_cpf,atualizar_cep,avaliar_hands, listagem_avaliacoes_hands,avaliar_pessoas,listagem_avaliacoes_clientes,listagem_avaliacoes_prestadores,ver_avaliacoes_recebidas,ver_avaliacoes_entregues,total_prestadores,total_clientes,estatisticas_landing,categorias_populares,prestadores_destaque,avaliacoes_hands_landing
 from src.mongo.criacao import adicionar_cliente,adicionar_prestador
 from schemas.Cadastro import Cliente,Prestador
 from schemas.Atualizar import AtualizarCliente,AtualizarPrestador
@@ -67,6 +67,24 @@ async def ver_avaliacoes_preenchidas_cliente(email:str):
 async def ver_avaliacoes_preenchidas_prestador(email:str):
     result,total_avaliacoes = await ver_avaliacoes_entregues('feedback_prestador',email)
     return {'avaliacoes_recebidas': result,'total':total_avaliacoes }
+
+@router.get('/landing/estatisticas', tags=['GET'], status_code=status.HTTP_200_OK, summary='Estatísticas da página inicial')
+async def landing_estatisticas():
+    return await estatisticas_landing()
+
+@router.get('/landing/categorias', tags=['GET'], status_code=status.HTTP_200_OK, summary='Categorias mais populares da página inicial')
+async def landing_categorias():
+    result = await categorias_populares()
+    return {'categorias': result}
+
+@router.get('/landing/prestadores_destaque', tags=['GET'], status_code=status.HTTP_200_OK, summary='Prestadores em destaque da página inicial')
+async def landing_prestadores_destaque():
+    result = await prestadores_destaque()
+    return {'prestadores': result}
+
+@router.get('/landing/avaliacoes_hands', tags=['GET'], status_code=status.HTTP_200_OK, summary='Resumo e últimas avaliações do Hands para a página inicial')
+async def landing_avaliacoes_hands():
+    return await avaliacoes_hands_landing()
 
 # Rotas POST
 @router.post('/cadastrar_cliente', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Cadastro de clientes')

@@ -1,6 +1,15 @@
 import { UsersIcon, StarSolidIcon, ShieldIcon } from '../components/icons'
+import useFetch from '../hooks/useFetch'
+import { getEstatisticas } from '../services/landing'
 
 export default function Hero() {
+  const { data: estatisticas } = useFetch(getEstatisticas)
+  const totalPrestadores = estatisticas?.total_prestadores
+  const profissionais =
+    totalPrestadores === undefined
+      ? 'Profissionais'
+      : `${totalPrestadores.toLocaleString('pt-BR')} ${totalPrestadores === 1 ? 'profissional' : 'profissionais'}`
+
   return (
     <section
       className="relative overflow-hidden"
@@ -18,7 +27,7 @@ export default function Hero() {
       <div className="relative max-w-4xl mx-auto px-6 py-24 text-center text-white">
         <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur px-4 py-1.5 rounded-full text-sm font-medium mb-8">
           <span className="w-2 h-2 rounded-full bg-[#FFC857]" />
-          +5.000 profissionais verificados disponíveis
+          {profissionais} {totalPrestadores === 1 ? 'disponível' : 'disponíveis'}
         </div>
 
         <h1 className="text-5xl lg:text-6xl font-black mb-6 leading-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
@@ -53,7 +62,7 @@ export default function Hero() {
             <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
               <UsersIcon stroke="white" />
             </span>
-            <span className="text-white/90 font-medium">+5.000 profissionais</span>
+            <span className="text-white/90 font-medium">{profissionais}</span>
           </div>
           <div className="hidden sm:block w-px h-5 bg-white/20" />
           <div className="flex items-center gap-2">

@@ -1,11 +1,17 @@
-const stats = [
-  { value: '+5.000', label: 'Profissionais ativos' },
-  { value: '+12.000', label: 'Clientes cadastrados' },
-  { value: '4.9', label: 'Avaliação média' },
-  { value: '97%', label: 'Taxa de recomendação' },
-]
+import useFetch from '../hooks/useFetch'
+import { getEstatisticas } from '../services/landing'
 
 export default function Stats() {
+  const { data: estatisticas } = useFetch(getEstatisticas)
+  const temAvaliacoes = estatisticas?.total_avaliacoes > 0
+
+  const stats = [
+    { value: estatisticas?.total_prestadores.toLocaleString('pt-BR') ?? '—', label: 'Profissionais ativos' },
+    { value: estatisticas?.total_clientes.toLocaleString('pt-BR') ?? '—', label: 'Clientes cadastrados' },
+    { value: temAvaliacoes ? estatisticas.nota_media.toFixed(1) : '—', label: 'Avaliação média' },
+    { value: temAvaliacoes ? `${estatisticas.taxa_recomendacao}%` : '—', label: 'Taxa de recomendação' },
+  ]
+
   return (
     <section className="py-16" style={{ background: 'linear-gradient(135deg, #4A25CC 0%, #5B2EFF 45%, #7C5CFC 100%)' }}>
       <div className="max-w-6xl mx-auto px-6">

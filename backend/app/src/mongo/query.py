@@ -164,3 +164,165 @@ async def total_clientes():
 async def total_prestadores():
     total = await prestador_col.count_documents({})
     return total
+
+projecao_publica_pessoa = {'nome': 1, 'endereco.cidade': 1, 'endereco.estado': 1}
+projecao_publica_prestador = {'nome': 1, 'servicos': 1, 'endereco.cidade': 1, 'endereco.estado': 1}
+
+def formatar_cidade(doc: dict):
+    endereco = doc.get('endereco') or []
+    if not endereco:
+        return None
+    cidade = endereco[0].get('cidade')
+    estado = endereco[0].get('estado')
+    return ', '.join(parte for parte in (cidade, estado) if parte) or None
+
+async def resumo_avaliacoes_hands():
+    pipeline_resumo = [{
+        '$group': {
+            '_id': None,
+            'media': {'$avg': '$nota'},
+            'total': {'$sum': 1},
+            'recomendam': {'$sum': {'$cond': [{'$gte': ['$nota', 4]}, 1, 0]}}
+        }
+    }]
+    # Arredondamento "meio para cima" (4.5 -> 5 estrelas) para montar a distribuição por estrelas
+    pipeline_distribuicao = [{
+        '$group': {
+            '_id': {'$floor': {'$add': ['$nota', 0.5]}},
+            'total': {'$sum': 1}
+        }
+    }]
+    resumo = await feedback_hands_col.aggregate(pipeline_resumo).to_list(length=1)
+    por_nota = await feedback_hands_col.aggregate(pipeline_distribuicao).to_list(length=None)
+
+    contagem = {estrelas: 0 for estrelas in range(1, 6)}
+    for item in por_nota:
+        if item['_id'] is None:
+            continue
+        estrelas = min(5, max(1, int(item['_id'])))
+        contagem[estrelas] += item['total']
+    total_distribuicao = sum(contagem.values())
+    distribuicao = [
+        {
+            'estrelas': estrelas,
+            'total': contagem[estrelas],
+            'percentual': round(contagem[estrelas] / total_distribuicao * 100) if total_distribuicao else 0
+        }
+        for estrelas in range(5, 0, -1)
+    ]
+
+    if not resumo:
+        return {'media': 0, 'total': 0, 'taxa_recomendacao': 0, 'distribuicao': distribuicao}
+    total = resumo[0]['total']
+    return {
+        'media': round(resumo[0]['media'], 1),
+        'total': total,
+        'taxa_recomendacao': round(resumo[0]['recomendam'] / total * 100),
+        'distribuicao': distribuicao
+    }
+
+async def estatisticas_landing():
+    total_prestadores = await prestador_col.count_documents({})
+    total_clientes = await cliente_col.count_documents({})
+    resumo = await resumo_avaliacoes_hands()
+    return {
+        'total_prestadores': total_prestadores,
+        'total_clientes': total_clientes,
+        'total_avaliacoes': resumo['total'],
+        'nota_media': resumo['media'],
+        'taxa_recomendacao': resumo['taxa_recomendacao']
+    }
+
+async def categorias_populares(limite: int = 8):
+    pipeline = [
+        {'$unwind': '$servicos'},
+        {'$group': {'_id': '$servicos', 'total': {'$sum': 1}}},
+        {'$sort': {'total': -1, '_id': 1}},
+        {'$limit': limite}
+    ]
+    docs = await prestador_col.aggregate(pipeline).to_list(length=limite)
+    return [{'nome': d['_id'], 'total': d['total']} for d in docs]
+
+async def prestadores_destaque(limite: int = 3):
+    # Melhores médias de avaliação; empata pelo maior número de avaliações
+    pipeline = [
+        {'$group': {'_id': '$avaliado', 'media': {'$avg': '$nota'}, 'total': {'$sum': 1}}},
+        {'$sort': {'media': -1, 'total': -1}},
+        {'$limit': limite * 5}  # folga: avaliados que já foram deletados são descartados abaixo
+    ]
+    avaliados = await feedback_prestador_col.aggregate(pipeline).to_list(length=None)
+    emails = [a['_id'] for a in avaliados if a['_id']]
+    prestadores = await prestador_col.find(
+        {'email': {'$in': emails}}, {**projecao_publica_prestador, 'email': 1}
+    ).to_list(length=None)
+    por_email = {p['email']: p for p in prestadores}
+
+    destaques = []
+    ids_usados = []
+    for avaliado in avaliados:
+        prestador = por_email.get(avaliado['_id'])
+        if prestador is None:
+            continue
+        ids_usados.append(prestador['_id'])
+        destaques.append({
+            '_id': str(prestador['_id']),
+            'nome': prestador.get('nome'),
+            'servicos': prestador.get('servicos') or [],
+            'cidade': formatar_cidade(prestador),
+            'nota_media': round(avaliado['media'], 1),
+            'total_avaliacoes': avaliado['total']
+        })
+        if len(destaques) == limite:
+            return destaques
+
+    # Se ainda não há prestadores avaliados suficientes, completa com prestadores sem avaliação
+    restantes = limite - len(destaques)
+    sem_avaliacao = await prestador_col.find(
+        {'_id': {'$nin': ids_usados}}, projecao_publica_prestador
+    ).limit(restantes).to_list(length=restantes)
+    for prestador in sem_avaliacao:
+        destaques.append({
+            '_id': str(prestador['_id']),
+            'nome': prestador.get('nome'),
+            'servicos': prestador.get('servicos') or [],
+            'cidade': formatar_cidade(prestador),
+            'nota_media': None,
+            'total_avaliacoes': 0
+        })
+    return destaques
+
+async def avaliacoes_hands_landing(limite: int = 6):
+    resumo = await resumo_avaliacoes_hands()
+    docs = await feedback_hands_col.find(
+        {'mensagem': {'$nin': [None, '']}}
+    ).sort('_id', -1).limit(limite).to_list(length=limite)
+
+    emails = list({d['avaliador'] for d in docs if d.get('avaliador')})
+    clientes = await cliente_col.find(
+        {'email': {'$in': emails}}, {**projecao_publica_pessoa, 'email': 1}
+    ).to_list(length=None)
+    prestadores = await prestador_col.find(
+        {'email': {'$in': emails}}, {**projecao_publica_pessoa, 'email': 1}
+    ).to_list(length=None)
+    clientes_por_email = {c['email']: c for c in clientes}
+    prestadores_por_email = {p['email']: p for p in prestadores}
+
+    avaliacoes = []
+    for doc in docs:
+        email = doc.get('avaliador')
+        if email in clientes_por_email:
+            autor, tipo = clientes_por_email[email], 'Cliente'
+        elif email in prestadores_por_email:
+            autor, tipo = prestadores_por_email[email], 'Prestador'
+        else:
+            autor, tipo = {}, None
+        avaliacoes.append({
+            '_id': str(doc['_id']),
+            'texto': doc['mensagem'].strip(),
+            'nota': doc['nota'],
+            'autor': autor.get('nome') or 'Usuário Hands',
+            'cidade': formatar_cidade(autor),
+            'tipo': tipo
+        })
+    return {'resumo': resumo, 'avaliacoes': avaliacoes}
+
