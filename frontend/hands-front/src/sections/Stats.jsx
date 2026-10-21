@@ -1,6 +1,6 @@
 const stats = [
   { value: '+5.000', label: 'Profissionais ativos' },
-  { value: '+12.000', label: 'Clientes atendidos' },
+  { value: '+12.000', label: 'Clientes cadastrados' },
   { value: '4.9', label: 'Avaliação média' },
   { value: '97%', label: 'Taxa de recomendação' },
 ]

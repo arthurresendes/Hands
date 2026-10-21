@@ -1,10 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import Logo from './Logo'
 
-const socialLinks = ['instagram', 'facebook', 'twitter', 'linkedin']
+const socialLinks = ['linkedin', 'linkedin', 'linkedin', 'linkedin']
 const plataformaLinks = ['Como funciona', 'Categorias', 'Profissionais', 'Diferenciais']
-const suporteLinks = ['Central de Ajuda', 'FAQ', 'Termos de Uso', 'Privacidade']
-const profissionalLinks = ['Cadastre-se', 'Como funciona', 'Plano gratuito', 'Dicas de perfil']
+const suporteLinks = []
+const profissionalLinks = ['Cadastre-se', 'Como funciona']
 
 export default function Footer() {
   const navigate = useNavigate()
@@ -45,7 +45,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-sm font-semibold text-white mb-5 uppercase tracking-wider">Suporte</h4>
+            <h4 className="text-sm font-semibold text-white mb-5 uppercase tracking-wider"></h4>
             <ul className="space-y-3">
               {suporteLinks.map((i) => (
                 <li key={i}>

@@ -2,14 +2,14 @@ import { useNavigate } from 'react-router-dom'
 import { BoltIcon, DropIcon, BrushIcon, BroomIcon, HammerIcon, LeafIcon, MonitorIcon, WrenchIcon } from '../components/icons'
 
 const categories = [
-  { name: 'Eletricista', count: '1.240', icon: BoltIcon },
-  { name: 'Encanador', count: '890', icon: DropIcon },
-  { name: 'Pintor', count: '1.150', icon: BrushIcon },
-  { name: 'Diarista', count: '2.100', icon: BroomIcon },
-  { name: 'Pedreiro', count: '940', icon: HammerIcon },
-  { name: 'Jardineiro', count: '670', icon: LeafIcon },
-  { name: 'Técnico de TI', count: '530', icon: MonitorIcon },
-  { name: 'Montador', count: '880', icon: WrenchIcon },
+  { name: 'Eletricista', icon: BoltIcon },
+  { name: 'Encanador',  icon: DropIcon },
+  { name: 'Pintor', icon: BrushIcon },
+  { name: 'Diarista', icon: BroomIcon },
+  { name: 'Pedreiro', icon: HammerIcon },
+  { name: 'Jardineiro', icon: LeafIcon },
+  { name: 'Técnico de TI', icon: MonitorIcon },
+  { name: 'Montador', icon: WrenchIcon },
 ]
 
 export default function Categories() {
@@ -35,7 +35,6 @@ export default function Categories() {
               </div>
               <div>
                 <p className="font-bold text-[#1F2937] text-sm" style={{ fontFamily: 'Outfit, sans-serif' }}>{cat.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{cat.count} profissionais</p>
               </div>
             </button>
           ))}

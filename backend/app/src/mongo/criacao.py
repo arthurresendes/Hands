@@ -3,6 +3,7 @@ import httpx
 from core.security import gerar_senha_hash
 from core.database import cliente_col,prestador_col,admin_col,db
 from pymongo import ASCENDING
+from datetime import datetime
 #from motor.motor_asyncio import AsyncIOMotorClient
 #from bson import ObjectId
 #import asyncio
@@ -63,7 +64,7 @@ async def adicionar_cliente(nome: str, email: str,celular: str, idade: int, cep:
         return {"Erro": resultado_cep["erro"]}
     cliente_add = {'nome': nome, 'email': email,'celular': celular, 'idade': idade, 'endereco': [
                 {'cep': cep, 'rua': resultado_cep ['rua'], 'cidade': resultado_cep ['cidade'], 'estado': resultado_cep['estado'], 'latitude': resultado_cep['lat'], 'longitude': resultado_cep['lon']}
-            ], 'cpf': cpf, 'informacoes': informacoes, 'senha': gerar_senha_hash(senha)}
+            ], 'cpf': cpf, 'informacoes': informacoes, 'senha': gerar_senha_hash(senha), 'data_criacao': datetime.now()}
     insercao = await cliente_col.insert_one(cliente_add)
     return {'Sucesso': f'Cliente adicionado com o id: {insercao.inserted_id}'}
 
@@ -76,7 +77,7 @@ async def adicionar_prestador(nome: str, email: str,celular: str, idade: int, ce
         return {"Erro": resultado_cep["erro"]}
     prestador_add = {'nome': nome, 'email': email, 'celular': celular, 'idade': idade, 'endereco': [
                 {'cep': cep, 'rua': resultado_cep ['rua'], 'cidade': resultado_cep ['cidade'], 'estado': resultado_cep['estado'], 'latitude': resultado_cep['lat'], 'longitude': resultado_cep['lon']}
-            ], 'cpf': cpf, 'informacoes': informacoes,'valor':valor,'servicos': servicos,'idiomas': idiomas ,'certificados': certificacoes,'senha': gerar_senha_hash(senha)}
+            ], 'cpf': cpf, 'informacoes': informacoes,'valor':valor,'servicos': servicos,'idiomas': idiomas ,'certificados': certificacoes,'senha': gerar_senha_hash(senha), 'data_criacao': datetime.now()}
     insercao = await prestador_col.insert_one(prestador_add)
     return {'Sucesso': f'Prestador adicionado com o id: {insercao.inserted_id}'}
 
