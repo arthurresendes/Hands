@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Logo from './Logo'
 import Avatar from './Avatar'
 import useAuth from '../hooks/useAuth'
+import { rotaAtiva } from '../utils/navegacao'
 import { SearchIcon, UserIcon, StarOutlineIcon, HeartIcon, MenuIcon, CloseIcon, LogoutIcon, ChevronDownIcon } from './icons'
 
 const navLinks = [
-  { label: 'Buscar Profissionais', path: '/cliente/buscar', Icon: SearchIcon },
+  { label: 'Buscar Profissionais', path: '/cliente/buscar', tambem: ['/cliente/profissional'], Icon: SearchIcon },
   { label: 'Favoritos', path: '/cliente/favoritos', Icon: HeartIcon },
   { label: 'Avaliar o Hands', path: '/cliente/avaliar', Icon: StarOutlineIcon },
   { label: 'Minha Conta', path: '/cliente/perfil', Icon: UserIcon },
@@ -14,6 +15,7 @@ const navLinks = [
 
 export default function ClientLayout({ children }) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { usuario, logout } = useAuth()
   const sair = async () => {
     await logout()
@@ -35,7 +37,8 @@ export default function ClientLayout({ children }) {
               <button
                 key={l.path}
                 onClick={() => navigate(l.path)}
-                className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#5B2EFF] hover:bg-[#5B2EFF]/5 px-4 py-2 rounded-xl transition-colors"
+                aria-current={rotaAtiva(pathname, l) ? 'page' : undefined}
+                className={`flex items-center gap-2 text-sm px-4 py-2 rounded-xl transition-colors ${rotaAtiva(pathname, l) ? 'text-[#5B2EFF] bg-[#5B2EFF]/10 font-semibold' : 'text-gray-500 hover:text-[#5B2EFF] hover:bg-[#5B2EFF]/5 font-medium'}`}
               >
                 <l.Icon width={16} height={16} />
                 {l.label}
@@ -90,7 +93,8 @@ export default function ClientLayout({ children }) {
               <button
                 key={l.path}
                 onClick={() => { navigate(l.path); setMobileOpen(false) }}
-                className="flex items-center gap-2.5 text-sm font-medium text-gray-600 text-left py-2.5"
+                aria-current={rotaAtiva(pathname, l) ? 'page' : undefined}
+                className={`flex items-center gap-2.5 text-sm text-left py-2.5 rounded-xl ${rotaAtiva(pathname, l) ? 'text-[#5B2EFF] bg-[#5B2EFF]/10 font-semibold px-3' : 'text-gray-600 font-medium'}`}
               >
                 <l.Icon width={16} height={16} />
                 {l.label}

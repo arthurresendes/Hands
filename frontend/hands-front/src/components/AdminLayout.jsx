@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Logo from './Logo'
 import useAuth from '../hooks/useAuth'
+import { rotaAtiva } from '../utils/navegacao'
 import { GridIcon, UsersIcon, BriefcaseIcon, StarOutlineIcon, MenuIcon, CloseIcon, LogoutIcon, ShieldLockIcon } from './icons'
 
 const navLinks = [
@@ -13,6 +14,7 @@ const navLinks = [
 
 export default function AdminLayout({ title, subtitle, children }) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { usuario, logout } = useAuth()
   const sair = async () => {
     await logout()
@@ -32,7 +34,8 @@ export default function AdminLayout({ title, subtitle, children }) {
             <button
               key={l.path}
               onClick={() => navigate(l.path)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              aria-current={rotaAtiva(pathname, l) ? 'page' : undefined}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${rotaAtiva(pathname, l) ? 'bg-[#FFC857]/15 text-[#FFC857]' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
             >
               <l.Icon width={16} height={16} />
               {l.label}
@@ -74,7 +77,8 @@ export default function AdminLayout({ title, subtitle, children }) {
               <button
                 key={l.path}
                 onClick={() => { navigate(l.path); setMobileOpen(false) }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/70 text-left"
+                aria-current={rotaAtiva(pathname, l) ? 'page' : undefined}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-left ${rotaAtiva(pathname, l) ? 'bg-[#FFC857]/15 text-[#FFC857]' : 'text-white/70'}`}
               >
                 <l.Icon width={16} height={16} />
                 {l.label}
