@@ -1,3 +1,4 @@
+import LinkTermos from '../components/LinkTermos'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
@@ -96,7 +97,9 @@ export default function RegisterClient() {
 
         <label className="flex items-start gap-2 text-xs text-gray-500">
           <input type="checkbox" required checked={aceito} onChange={(e) => setAceito(e.target.checked)} className="rounded border-gray-300 mt-0.5" />
-          Li e aceito os Termos de Uso e a Política de Privacidade do Hands
+          <span>
+            Li e aceito os <LinkTermos>Termos de Uso e a Política de Privacidade</LinkTermos> do Hands
+          </span>
         </label>
 
         {erro && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-3">{erro}</p>}

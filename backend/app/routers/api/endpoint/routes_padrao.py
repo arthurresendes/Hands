@@ -16,6 +16,7 @@ from src.mongo.busca import buscar_prestadores,detalhe_prestador,listar_favorito
 from src.mongo.admin import dashboard_admin,listar_clientes_admin,listar_prestadores_admin,listar_avaliacoes_hands_admin,exportar_clientes_csv,exportar_prestadores_csv,exportar_avaliacoes_hands_csv
 from core.auth import criar_token_acesso,setar_cookie_acesso
 from core.deps import exigir_usuario,get_token_payload,obter_token_do_cookie
+from src.documentos import gerar_pdf_termos
 from src.armazenamento import preparar_foto,salvar_foto,caminho_foto,remover_foto
 
 router = APIRouter(prefix="/api/v1")
@@ -52,6 +53,14 @@ def resposta_csv(conteudo: str, nome: str) -> Response:
         content=conteudo.encode('utf-8'),
         media_type='text/csv; charset=utf-8',
         headers={'Content-Disposition': f'attachment; filename="{arquivo}"'}
+    )
+
+@router.get('/termos-de-uso', tags=['GET'], status_code=status.HTTP_200_OK, summary='Termos de uso e política de privacidade em PDF')
+async def baixar_termos_de_uso():
+    return Response(
+        content=gerar_pdf_termos(),
+        media_type='application/pdf',
+        headers={'Content-Disposition': 'attachment; filename="termos-de-uso-hands.pdf"'}
     )
 
 @router.get('/admin/dashboard', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Indicadores do dashboard do admin')
