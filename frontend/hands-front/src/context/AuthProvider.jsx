@@ -5,6 +5,7 @@ import { buscarUsuarioAtual, entrar, sair } from '../api/autenticacao'
 export default function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null)
   const [carregando, setCarregando] = useState(true)
+  const [fotoVersao, setFotoVersao] = useState(0)
 
   const recarregar = useCallback(async () => {
     try {
@@ -41,9 +42,11 @@ export default function AuthProvider({ children }) {
     }
   }, [])
 
+  const atualizarFoto = useCallback(() => setFotoVersao((versao) => versao + 1), [])
+
   const valor = useMemo(
-    () => ({ usuario, carregando, login, logout, recarregar }),
-    [usuario, carregando, login, logout, recarregar],
+    () => ({ usuario, carregando, fotoVersao, login, logout, recarregar, atualizarFoto }),
+    [usuario, carregando, fotoVersao, login, logout, recarregar, atualizarFoto],
   )
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>

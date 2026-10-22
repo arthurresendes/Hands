@@ -22,6 +22,30 @@ async function requisitar(path, opcoes = {}) {
   return data
 }
 
+export function montarQuery(filtros = {}) {
+  const parametros = new URLSearchParams()
+  Object.entries(filtros).forEach(([chave, valor]) => {
+    if (valor !== undefined && valor !== null && valor !== '' && valor !== false) {
+      parametros.append(chave, valor)
+    }
+  })
+  const texto = parametros.toString()
+  return texto ? `?${texto}` : ''
+}
+
+export function montarFormData(campos, foto) {
+  const formData = new FormData()
+  Object.entries(campos).forEach(([nome, valor]) => {
+    if (Array.isArray(valor)) {
+      valor.forEach((item) => formData.append(nome, item))
+    } else {
+      formData.append(nome, valor)
+    }
+  })
+  if (foto) formData.append('foto', foto)
+  return formData
+}
+
 export function apiGet(path) {
   return requisitar(path)
 }
@@ -36,4 +60,16 @@ export function apiPost(path, corpo) {
 
 export function apiPostForm(path, formData) {
   return requisitar(path, { method: 'POST', body: formData })
+}
+
+export function apiPatch(path, corpo) {
+  return requisitar(path, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(corpo),
+  })
+}
+
+export function apiDelete(path) {
+  return requisitar(path, { method: 'DELETE' })
 }

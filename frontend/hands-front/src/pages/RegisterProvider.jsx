@@ -5,7 +5,7 @@ import FormField from '../components/FormField'
 import FotoInput from '../components/FotoInput'
 import { UserIcon, MailIcon, IdCardIcon, LockIcon, PinIcon, BriefcaseIcon, CoinIcon, ChatIcon } from '../components/icons'
 import useAuth from '../hooks/useAuth'
-import { cadastrarPrestador } from '../api/cadastro'
+import { cadastroPrestador } from '../api/post/cadastro/cadastroPrestador'
 import { inicioPorPapel } from '../utils/rotasPorPapel'
 
 const servicos = [
@@ -51,7 +51,7 @@ export default function RegisterProvider() {
     }
     setEnviando(true)
     try {
-      await cadastrarPrestador(
+      await cadastroPrestador(
         {
           nome: form.nome.trim(),
           email: form.email.trim(),

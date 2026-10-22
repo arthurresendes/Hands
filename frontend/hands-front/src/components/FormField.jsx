@@ -13,7 +13,7 @@ export default function FormField({ label, type = 'text', placeholder, Icon, ...
           placeholder={placeholder}
           required
           {...props}
-          className={`w-full ${Icon ? 'pl-11' : 'pl-4'} pr-4 py-3.5 border border-gray-200 rounded-xl outline-none text-sm placeholder-gray-400 focus:border-[#5B2EFF] transition-colors`}
+          className={`w-full ${Icon ? 'pl-11' : 'pl-4'} pr-4 py-3.5 border border-gray-200 rounded-xl outline-none text-sm placeholder-gray-400 focus:border-[#5B2EFF] disabled:bg-gray-50 disabled:text-gray-400 transition-colors`}
         />
       </div>
     </div>

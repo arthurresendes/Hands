@@ -39,7 +39,7 @@ export default function App() {
         <Route path="/cadastro/prestador" element={<RegisterProvider />} />
         <Route element={<RotaProtegida papel="cliente" />}>
           <Route path="/cliente/buscar" element={<ClientSearch />} />
-          <Route path="/cliente/profissional" element={<ProfessionalProfile />} />
+          <Route path="/cliente/profissional/:id" element={<ProfessionalProfile />} />
           <Route path="/cliente/perfil" element={<ClientProfile />} />
           <Route path="/cliente/avaliar" element={<PlatformFeedback />} />
           <Route path='/cliente/favoritos' element={<ClientFavorites />} />

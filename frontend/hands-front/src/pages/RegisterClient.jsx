@@ -5,7 +5,7 @@ import FormField from '../components/FormField'
 import FotoInput from '../components/FotoInput'
 import { UserIcon, MailIcon, IdCardIcon, LockIcon, PinIcon, ChatIcon } from '../components/icons'
 import useAuth from '../hooks/useAuth'
-import { cadastrarCliente } from '../api/cadastro'
+import { cadastroCliente } from '../api/post/cadastro/cadastroCliente'
 import { inicioPorPapel } from '../utils/rotasPorPapel'
 
 export default function RegisterClient() {
@@ -28,7 +28,7 @@ export default function RegisterClient() {
     }
     setEnviando(true)
     try {
-      await cadastrarCliente(
+      await cadastroCliente(
         {
           nome: form.nome.trim(),
           email: form.email.trim(),
