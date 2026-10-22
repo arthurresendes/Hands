@@ -48,7 +48,7 @@ export default function App() {
           <Route path="/prestador/clientes" element={<ProviderClients />} />
           <Route path="/prestador/avaliacoes" element={<ProviderReviews />} />
           <Route path="/prestador/perfil" element={<ProviderProfile />} />
-          <Route path="/prestador/cliente" element={<ClientProfileView />} />
+          <Route path="/prestador/cliente/:id" element={<ClientProfileView />} />
           <Route path="/prestador/avaliar" element={<ProviderFeedback />} />
         </Route>
         <Route element={<RotaProtegida papel="admin" />}>

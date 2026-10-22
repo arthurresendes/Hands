@@ -1,34 +1,29 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ClientLayout from '../components/ClientLayout'
 import FormField from '../components/FormField'
-import Avatar from '../components/Avatar'
+import FotoPerfilEditavel from '../components/FotoPerfilEditavel'
+import AlterarSenha from '../components/AlterarSenha'
+import ExcluirConta from '../components/ExcluirConta'
 import Aviso from '../components/Aviso'
 import useAuth from '../hooks/useAuth'
-import { UserIcon, MailIcon, IdCardIcon, LockIcon, PinIcon, EditIcon, ChatIcon } from '../components/icons'
+import { UserIcon, MailIcon, IdCardIcon, PinIcon, ChatIcon } from '../components/icons'
 import { buscarPerfilCliente } from '../api/get/detalhe/perfilCliente'
 import { atualizarDadosClientes } from '../api/patch/atualizar/atualizarDadosCliente'
 import { deletarCliente } from '../api/delete/deletarCliente'
-import { enviarFoto } from '../api/post/cadastro/enviarFoto'
 import { anoDe } from '../utils/formatadores'
-
-const SENHAS_INICIAIS = { senha_atual: '', senha: '', confirmar: '' }
 
 const soDigitos = (texto) => (texto ?? '').replace(/\D/g, '')
 
 export default function ClientProfile() {
   const navigate = useNavigate()
-  const { usuario, recarregar, logout, atualizarFoto } = useAuth()
-  const entradaFoto = useRef(null)
+  const { usuario, recarregar, logout } = useAuth()
   const [perfil, setPerfil] = useState(null)
   const [form, setForm] = useState({ nome: '', celular: '', idade: '', cep: '', informacoes: '' })
-  const [senhas, setSenhas] = useState(SENHAS_INICIAIS)
   const [carregando, setCarregando] = useState(true)
   const [avisoDados, setAvisoDados] = useState(null)
-  const [avisoSenha, setAvisoSenha] = useState(null)
   const [avisoGeral, setAvisoGeral] = useState(null)
   const [salvando, setSalvando] = useState(false)
-  const [trocandoSenha, setTrocandoSenha] = useState(false)
 
   const carregar = useCallback(async () => {
     const dados = await buscarPerfilCliente()
@@ -49,7 +44,6 @@ export default function ClientProfile() {
   }, [carregar])
 
   const alterar = (e) => setForm((atual) => ({ ...atual, [e.target.name]: e.target.value }))
-  const alterarSenha = (e) => setSenhas((atual) => ({ ...atual, [e.target.name]: e.target.value }))
 
   const salvarDados = async (e) => {
     e.preventDefault()
@@ -74,47 +68,13 @@ export default function ClientProfile() {
     }
   }
 
-  const trocarSenha = async (e) => {
-    e.preventDefault()
-    setAvisoSenha(null)
-    if (senhas.senha !== senhas.confirmar) {
-      setAvisoSenha({ tipo: 'erro', texto: 'A confirmação não confere com a nova senha.' })
-      return
-    }
-    setTrocandoSenha(true)
-    try {
-      await atualizarDadosClientes({ id: usuario.id, senha: senhas.senha, senha_atual: senhas.senha_atual })
-      setSenhas(SENHAS_INICIAIS)
-      setAvisoSenha({ tipo: 'sucesso', texto: 'Senha atualizada com sucesso.' })
-    } catch (error) {
-      setAvisoSenha({ tipo: 'erro', texto: error.message })
-    } finally {
-      setTrocandoSenha(false)
-    }
-  }
-
-  const trocarFoto = async (e) => {
-    const arquivo = e.target.files[0]
-    e.target.value = ''
-    if (!arquivo) return
-    setAvisoGeral(null)
-    try {
-      await enviarFoto(arquivo)
-      atualizarFoto()
-    } catch (error) {
-      setAvisoGeral({ tipo: 'erro', texto: error.message })
-    }
-  }
+  const trocarSenha = (senhaAtual, novaSenha) =>
+    atualizarDadosClientes({ id: usuario.id, senha: novaSenha, senha_atual: senhaAtual })
 
   const excluirConta = async () => {
-    if (!window.confirm('Tem certeza? Sua conta e seus dados serão excluídos permanentemente.')) return
-    try {
-      await deletarCliente(perfil.email)
-      await logout()
-      navigate('/')
-    } catch (error) {
-      setAvisoGeral({ tipo: 'erro', texto: error.message })
-    }
+    await deletarCliente(perfil.email)
+    await logout()
+    navigate('/')
   }
 
   const desde = anoDe(perfil?.cadastrado_em)
@@ -136,22 +96,11 @@ export default function ClientProfile() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white rounded-2xl border border-gray-100 p-6 h-fit">
             <div className="flex flex-col items-center text-center">
-              <div className="relative">
-                <Avatar papel="cliente" id={perfil.id} className="w-24 h-24 rounded-full">
-                  <div className="w-24 h-24 rounded-full bg-[#5B2EFF]/10 flex items-center justify-center text-[#5B2EFF]">
-                    <UserIcon width={32} height={32} />
-                  </div>
-                </Avatar>
-                <button
-                  type="button"
-                  onClick={() => entradaFoto.current.click()}
-                  aria-label="Trocar foto"
-                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#5B2EFF] text-white flex items-center justify-center border-2 border-white"
-                >
-                  <EditIcon width={13} height={13} />
-                </button>
-                <input ref={entradaFoto} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={trocarFoto} />
-              </div>
+              <FotoPerfilEditavel papel="cliente" id={perfil.id} onErro={(texto) => setAvisoGeral({ tipo: 'erro', texto })}>
+                <div className="w-24 h-24 rounded-full bg-[#5B2EFF]/10 flex items-center justify-center text-[#5B2EFF]">
+                  <UserIcon width={32} height={32} />
+                </div>
+              </FotoPerfilEditavel>
               <h2 className="font-bold text-[#1F2937] mt-4" style={{ fontFamily: 'Outfit, sans-serif' }}>{perfil.nome}</h2>
               <p className="text-sm text-gray-400">{desde ? `Cliente desde ${desde}` : 'Cliente Hands'}</p>
             </div>
@@ -210,37 +159,9 @@ export default function ClientProfile() {
               </div>
             </form>
 
-            <form onSubmit={trocarSenha} className="bg-white rounded-2xl border border-gray-100 p-6">
-              <h2 className="font-bold text-[#1F2937] mb-5" style={{ fontFamily: 'Outfit, sans-serif' }}>Alterar senha</h2>
-              <div className="space-y-5">
-                <FormField label="Senha atual" type="password" placeholder="Digite sua senha atual" Icon={LockIcon} name="senha_atual" autoComplete="current-password" value={senhas.senha_atual} onChange={alterarSenha} />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField label="Nova senha" type="password" placeholder="Mínimo de 6 caracteres" Icon={LockIcon} name="senha" autoComplete="new-password" minLength={6} value={senhas.senha} onChange={alterarSenha} />
-                  <FormField label="Confirmar nova senha" type="password" placeholder="Repita a nova senha" Icon={LockIcon} name="confirmar" autoComplete="new-password" value={senhas.confirmar} onChange={alterarSenha} />
-                </div>
-                {avisoSenha && <Aviso tipo={avisoSenha.tipo}>{avisoSenha.texto}</Aviso>}
-                <button
-                  type="submit"
-                  disabled={trocandoSenha}
-                  className="bg-[#1F2937] hover:bg-black disabled:opacity-60 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors"
-                  style={{ fontFamily: 'Outfit, sans-serif' }}
-                >
-                  {trocandoSenha ? 'Atualizando...' : 'Atualizar senha'}
-                </button>
-              </div>
-            </form>
+            <AlterarSenha onAlterar={trocarSenha} />
 
-            <div className="bg-white rounded-2xl border border-red-100 p-6">
-              <h2 className="font-bold text-red-500 mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>Excluir conta</h2>
-              <p className="text-sm text-gray-500 mb-4">Essa ação é permanente e removerá todos os seus dados da plataforma.</p>
-              <button
-                type="button"
-                onClick={excluirConta}
-                className="border border-red-200 text-red-500 font-semibold px-6 py-3 rounded-xl text-sm hover:bg-red-50 transition-colors"
-              >
-                Excluir minha conta
-              </button>
-            </div>
+            <ExcluirConta onExcluir={excluirConta} />
           </div>
         </div>
       )}

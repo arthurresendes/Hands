@@ -21,3 +21,12 @@ export function tempoDesde(dataIso) {
 export function anoDe(dataIso) {
   return dataIso ? new Date(dataIso).getFullYear() : null
 }
+
+export function converterValor(texto) {
+  return Number(texto.replace(/[^\d,-]/g, '').replace(',', '.'))
+}
+
+export function formatarMoeda(valor) {
+  if (valor === null || valor === undefined) return ''
+  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}

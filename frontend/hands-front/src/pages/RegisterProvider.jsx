@@ -7,6 +7,7 @@ import { UserIcon, MailIcon, IdCardIcon, LockIcon, PinIcon, BriefcaseIcon, CoinI
 import useAuth from '../hooks/useAuth'
 import { cadastroPrestador } from '../api/post/cadastro/cadastroPrestador'
 import { inicioPorPapel } from '../utils/rotasPorPapel'
+import { converterValor } from '../utils/formatadores'
 
 const servicos = [
   'Eletricista',
@@ -18,10 +19,6 @@ const servicos = [
   'Técnico de TI',
   'Montador de Móveis',
 ]
-
-function converterValor(texto) {
-  return Number(texto.replace(/[^\d,-]/g, '').replace(',', '.'))
-}
 
 export default function RegisterProvider() {
   const navigate = useNavigate()
