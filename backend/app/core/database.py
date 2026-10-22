@@ -20,3 +20,5 @@ async def criar_indices():
     await favorito_col.create_index("prestador")
     await feedback_prestador_col.create_index("avaliado")
     await feedback_prestador_col.create_index([("avaliador", 1), ("avaliado", 1)])
+    await feedback_cliente_col.create_index("avaliado")
+    await feedback_cliente_col.create_index([("avaliador", 1), ("avaliado", 1)])

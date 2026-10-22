@@ -10,6 +10,7 @@ from schemas.Avaliar import Avaliacao,AvaliacaoPessoas
 from schemas.Favorito import Favorito
 from core.database import cliente_col,prestador_col,favorito_col
 from core.security import verificar_senha
+from src.mongo.busca_clientes import buscar_clientes,detalhe_cliente,perfil_prestador,avaliacoes_recebidas_prestador
 from src.mongo.busca import buscar_prestadores,detalhe_prestador,listar_favoritos,favoritar,desfavoritar,perfil_cliente,minha_avaliacao_hands
 from core.auth import criar_token_acesso,setar_cookie_acesso
 from core.deps import exigir_usuario,get_token_payload,obter_token_do_cookie
@@ -95,6 +96,44 @@ async def buscar_prestadores_endpoint(
 @router.get('/prestadores/{id_prestador}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Perfil completo de um prestador')
 async def ver_prestador(id_prestador: str, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
     return await detalhe_prestador(id_prestador, usuario.get('email'))
+
+@router.get('/clientes', tags=['GET'], status_code=status.HTTP_200_OK, summary='Buscar clientes com filtros')
+async def buscar_clientes_endpoint(
+    q: str | None = Query(None, max_length=100),
+    nome: str | None = Query(None, max_length=100),
+    email: str | None = Query(None, max_length=100),
+    cidade: str | None = Query(None, max_length=60),
+    estado: str | None = Query(None, max_length=2),
+    cep: str | None = Query(None, max_length=10),
+    raio_km: float | None = Query(None, gt=0, le=500),
+    nota_minima: float | None = Query(None, ge=0, le=5),
+    somente_avaliados: bool = False,
+    ordenar: str | None = Query(None, pattern='^(relevancia|nota|nome|distancia|avaliacoes)$'),
+    pagina: int = Query(1, ge=1),
+    limite: int = Query(12, ge=1, le=50),
+    usuario: dict = Depends(exigir_usuario('prestador','admin')),
+):
+    return await buscar_clientes(
+        usuario.get('email'), q=q, nome=nome, email=email, cidade=cidade, estado=estado, cep=cep,
+        raio_km=raio_km, nota_minima=nota_minima, somente_avaliados=somente_avaliados,
+        ordenar=ordenar, pagina=pagina, limite=limite
+    )
+
+@router.get('/clientes/{id_cliente}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Perfil completo de um cliente')
+async def ver_cliente(id_cliente: str, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
+    return await detalhe_cliente(id_cliente, usuario.get('email'))
+
+@router.get('/prestador/perfil', tags=['GET'], status_code=status.HTTP_200_OK, summary='Dados do perfil do prestador logado')
+async def ver_perfil_prestador(usuario: dict = Depends(exigir_usuario('prestador'))):
+    return await perfil_prestador(usuario['id'])
+
+@router.get('/prestador/avaliacoes', tags=['GET'], status_code=status.HTTP_200_OK, summary='Avaliações recebidas pelo prestador logado')
+async def ver_avaliacoes_do_prestador(
+    pagina: int = Query(1, ge=1),
+    limite: int = Query(10, ge=1, le=50),
+    usuario: dict = Depends(exigir_usuario('prestador')),
+):
+    return await avaliacoes_recebidas_prestador(usuario['email'], pagina, limite)
 
 @router.get('/favoritos', tags=['GET'], status_code=status.HTTP_200_OK, summary='Prestadores favoritos do cliente')
 async def ver_favoritos(usuario: dict = Depends(exigir_usuario('cliente'))):
@@ -270,7 +309,9 @@ async def avaliar_prestador(avaliar: AvaliacaoPessoas, usuario: dict = Depends(e
 
 @router.post("/avaliar_clientes", tags=["POST"], summary="Avaliar clientes", status_code=status.HTTP_201_CREATED)
 async def avaliar_clientes(avaliar: AvaliacaoPessoas, usuario: dict = Depends(exigir_usuario('prestador'))):
-    res = await avaliar_pessoas("feedback_cliente", usuario['email'], avaliar.para,  avaliar.nota, avaliar.mensagem)
+    if await cliente_col.find_one({'email': avaliar.para.strip()}, {'_id': 1}) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente não encontrado.")
+    res = await avaliar_pessoas("feedback_cliente", usuario['email'], avaliar.para.strip(),  avaliar.nota, avaliar.mensagem.strip())
     return {'id_resultado': str(res)}
 
 @router.post('/favoritos', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Favoritar prestador pelo e-mail')
@@ -318,6 +359,18 @@ async def atualizar_prestador(prestador: AtualizarPrestador, usuario: dict = Dep
     if prestador_busca is None:
         raise HTTPException(detail="Prestador não encontrado", status_code=status.HTTP_404_NOT_FOUND)
     await validar_alteracoes_sensiveis(collection_name, prestador.id, prestador.email, prestador.senha, prestador.senha_atual, usuario, prestador_busca['email'])
+    if prestador.servicos is not None and not [servico for servico in prestador.servicos if servico.strip()]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selecione ao menos um serviço oferecido.")
+    if prestador.valor is not None and prestador.valor < 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="O valor do serviço não pode ser negativo.")
+    if prestador.cpf is not None:
+        resultado_cpf = await atualizar_cpf(collection_name,prestador.id, prestador.cpf)
+        if isinstance(resultado_cpf, dict) and "Erro" in resultado_cpf:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=resultado_cpf["Erro"])
+    if prestador.cep is not None:
+        resultado_cep = await atualizar_cep(collection_name,prestador.id, prestador.cep)
+        if isinstance(resultado_cep, dict) and "Erro" in resultado_cep:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=resultado_cep["Erro"])
     if prestador.nome is not None:
         await atualizar(collection_name,prestador.id, "nome", prestador.nome)
     if prestador.celular is not None:
@@ -330,20 +383,12 @@ async def atualizar_prestador(prestador: AtualizarPrestador, usuario: dict = Dep
         await atualizar(collection_name,prestador.id, "valor", prestador.valor)
     if prestador.senha is not None:
         await atualizar_senha(collection_name,prestador.id, prestador.senha)
-    if prestador.cpf is not None:
-        resultado_cpf = await atualizar_cpf(collection_name,prestador.id, prestador.cpf)
-        if isinstance(resultado_cpf, dict) and "Erro" in resultado_cpf:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=resultado_cpf["Erro"])
-    if prestador.cep is not None:
-        resultado_cep = await atualizar_cep(collection_name,prestador.id, prestador.cep)
-        if isinstance(resultado_cep, dict) and "Erro" in resultado_cep:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=resultado_cep["Erro"])
     if prestador.servicos is not None:
-            await atualizar(collection_name,prestador.id, "servicos", prestador.servicos)
+        await atualizar(collection_name,prestador.id, "servicos", [servico.strip() for servico in prestador.servicos if servico.strip()])
     if prestador.idiomas is not None:
-            await atualizar(collection_name,prestador.id, "idiomas", prestador.idiomas)
+        await atualizar(collection_name,prestador.id, "idiomas", [idioma.strip() for idioma in prestador.idiomas if idioma.strip()])
     if prestador.certificacoes is not None:
-            await atualizar(collection_name,prestador.id, "certificados", prestador.certificacoes)
+        await atualizar(collection_name,prestador.id, "certificados", [c.strip() for c in prestador.certificacoes if c.strip()])
     prestador_atualizado = await busca_especifica_prestador(prestador.id)
     return prestador_atualizado
 
