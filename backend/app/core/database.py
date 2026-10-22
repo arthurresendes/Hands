@@ -11,6 +11,7 @@ feedback_hands_col = db["feedback_hands"]
 feedback_cliente_col = db["feedback_cliente"]
 feedback_prestador_col = db["feedback_prestador"]
 favorito_col = db["favorito"]
+contadores_col = db["contadores"]
 # Criação de indices para evitar duplicidades de cadastros nas collections
 async def criar_indices():
     await cliente_col.create_index("email", unique=True)
@@ -20,5 +21,6 @@ async def criar_indices():
     await favorito_col.create_index("prestador")
     await feedback_prestador_col.create_index("avaliado")
     await feedback_prestador_col.create_index([("avaliador", 1), ("avaliado", 1)])
+    await feedback_hands_col.create_index("avaliador")
     await feedback_cliente_col.create_index("avaliado")
     await feedback_cliente_col.create_index([("avaliador", 1), ("avaliado", 1)])

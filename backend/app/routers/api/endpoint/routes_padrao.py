@@ -2,6 +2,7 @@ from fastapi import APIRouter,status,HTTPException,Request,Depends,Form,File,Upl
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi.responses import FileResponse
+from datetime import datetime
 from src.mongo.query import listagem_clientes,listagem_prestadores,deletar_por_email, busca_especifica_cliente,busca_especifica_prestador,atualizar,atualizar_senha,atualizar_cpf,atualizar_cep,avaliar_hands, listagem_avaliacoes_hands,avaliar_pessoas,listagem_avaliacoes_clientes,listagem_avaliacoes_prestadores,ver_avaliacoes_recebidas,ver_avaliacoes_entregues,total_prestadores,total_clientes,estatisticas_landing,categorias_populares,prestadores_destaque,avaliacoes_hands_landing
 from src.mongo.criacao import adicionar_cliente,adicionar_prestador
 from schemas.Cadastro import Cliente,Prestador
@@ -12,6 +13,7 @@ from core.database import cliente_col,prestador_col,favorito_col
 from core.security import verificar_senha
 from src.mongo.busca_clientes import buscar_clientes,detalhe_cliente,perfil_prestador,avaliacoes_recebidas_prestador
 from src.mongo.busca import buscar_prestadores,detalhe_prestador,listar_favoritos,favoritar,desfavoritar,perfil_cliente,minha_avaliacao_hands
+from src.mongo.admin import dashboard_admin,listar_clientes_admin,listar_prestadores_admin,listar_avaliacoes_hands_admin,exportar_clientes_csv,exportar_prestadores_csv,exportar_avaliacoes_hands_csv
 from core.auth import criar_token_acesso,setar_cookie_acesso
 from core.deps import exigir_usuario,get_token_payload,obter_token_do_cookie
 from src.armazenamento import preparar_foto,salvar_foto,caminho_foto,remover_foto
@@ -43,6 +45,95 @@ def garantir_dono_ou_admin(usuario: dict, email: str):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não autorizado a este recurso.")
 
 # Rotas GET
+
+def resposta_csv(conteudo: str, nome: str) -> Response:
+    arquivo = f"{nome}-{datetime.now().strftime('%Y%m%d')}.csv"
+    return Response(
+        content=conteudo.encode('utf-8'),
+        media_type='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="{arquivo}"'}
+    )
+
+@router.get('/admin/dashboard', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Indicadores do dashboard do admin')
+async def admin_dashboard(usuario: dict = Depends(exigir_usuario('admin'))):
+    return await dashboard_admin()
+
+@router.get('/admin/clientes', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Listagem de clientes para o admin')
+async def admin_clientes(
+    q: str | None = Query(None, max_length=100),
+    cidade: str | None = Query(None, max_length=60),
+    estado: str | None = Query(None, max_length=2),
+    cadastro_de: str | None = Query(None, pattern=r'^\d{4}-\d{2}-\d{2}$'),
+    cadastro_ate: str | None = Query(None, pattern=r'^\d{4}-\d{2}-\d{2}$'),
+    ordenar: str | None = Query(None, pattern='^(recentes|antigos|nome)$'),
+    pagina: int = Query(1, ge=1),
+    limite: int = Query(10, ge=1, le=100),
+    usuario: dict = Depends(exigir_usuario('admin')),
+):
+    return await listar_clientes_admin(q, cidade, estado, cadastro_de, cadastro_ate, ordenar, pagina, limite)
+
+@router.get('/admin/clientes/exportar', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Exportar todos os clientes filtrados em CSV')
+async def admin_exportar_clientes(
+    q: str | None = Query(None, max_length=100),
+    cidade: str | None = Query(None, max_length=60),
+    estado: str | None = Query(None, max_length=2),
+    cadastro_de: str | None = Query(None, pattern=r'^\d{4}-\d{2}-\d{2}$'),
+    cadastro_ate: str | None = Query(None, pattern=r'^\d{4}-\d{2}-\d{2}$'),
+    ordenar: str | None = Query(None, pattern='^(recentes|antigos|nome)$'),
+    usuario: dict = Depends(exigir_usuario('admin')),
+):
+    return resposta_csv(await exportar_clientes_csv(q, cidade, estado, cadastro_de, cadastro_ate, ordenar), 'clientes')
+
+@router.get('/admin/prestadores', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Listagem de prestadores para o admin')
+async def admin_prestadores(
+    q: str | None = Query(None, max_length=100),
+    servico: str | None = Query(None, max_length=60),
+    cidade: str | None = Query(None, max_length=60),
+    estado: str | None = Query(None, max_length=2),
+    nota_minima: float | None = Query(None, ge=0, le=5),
+    cadastro_de: str | None = Query(None, pattern=r'^\d{4}-\d{2}-\d{2}$'),
+    cadastro_ate: str | None = Query(None, pattern=r'^\d{4}-\d{2}-\d{2}$'),
+    ordenar: str | None = Query(None, pattern='^(recentes|antigos|nome|nota)$'),
+    pagina: int = Query(1, ge=1),
+    limite: int = Query(10, ge=1, le=100),
+    usuario: dict = Depends(exigir_usuario('admin')),
+):
+    return await listar_prestadores_admin(q, servico, cidade, estado, nota_minima, cadastro_de, cadastro_ate, ordenar, pagina, limite)
+
+@router.get('/admin/prestadores/exportar', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Exportar todos os prestadores filtrados em CSV')
+async def admin_exportar_prestadores(
+    q: str | None = Query(None, max_length=100),
+    servico: str | None = Query(None, max_length=60),
+    cidade: str | None = Query(None, max_length=60),
+    estado: str | None = Query(None, max_length=2),
+    nota_minima: float | None = Query(None, ge=0, le=5),
+    cadastro_de: str | None = Query(None, pattern=r'^\d{4}-\d{2}-\d{2}$'),
+    cadastro_ate: str | None = Query(None, pattern=r'^\d{4}-\d{2}-\d{2}$'),
+    ordenar: str | None = Query(None, pattern='^(recentes|antigos|nome|nota)$'),
+    usuario: dict = Depends(exigir_usuario('admin')),
+):
+    return resposta_csv(await exportar_prestadores_csv(q, servico, cidade, estado, nota_minima, cadastro_de, cadastro_ate, ordenar), 'prestadores')
+
+@router.get('/admin/avaliacoes-hands', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Avaliações do Hands para o admin')
+async def admin_avaliacoes_hands(
+    papel: str | None = Query(None, pattern='^(cliente|prestador)$'),
+    q: str | None = Query(None, max_length=100),
+    nota: float | None = Query(None, ge=1, le=5),
+    pagina: int = Query(1, ge=1),
+    limite: int = Query(10, ge=1, le=100),
+    usuario: dict = Depends(exigir_usuario('admin')),
+):
+    return await listar_avaliacoes_hands_admin(papel, q, nota, pagina, limite)
+
+@router.get('/admin/avaliacoes-hands/exportar', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Exportar todas as avaliações do Hands em CSV')
+async def admin_exportar_avaliacoes_hands(
+    papel: str | None = Query(None, pattern='^(cliente|prestador)$'),
+    q: str | None = Query(None, max_length=100),
+    nota: float | None = Query(None, ge=1, le=5),
+    usuario: dict = Depends(exigir_usuario('admin')),
+):
+    return resposta_csv(await exportar_avaliacoes_hands_csv(papel, q, nota), 'avaliacoes-hands')
+
 @router.get('/', tags=['GET'], status_code=status.HTTP_200_OK, summary='Rota base do projeto')
 async def rota_base():
     return {'Projeto': 'Hands - Marktplace de serviços'}
