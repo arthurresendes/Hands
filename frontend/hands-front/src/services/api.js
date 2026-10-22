@@ -73,3 +73,22 @@ export function apiPatch(path, corpo) {
 export function apiDelete(path) {
   return requisitar(path, { method: 'DELETE' })
 }
+
+export async function apiDownload(path, nomePadrao = 'exportacao.csv') {
+  const response = await fetch(`${BASE_URL}/api/v1${path}`, { credentials: 'include' })
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}))
+    const erro = new Error(mensagemDeErro(data, response.status))
+    erro.status = response.status
+    throw erro
+  }
+  const arquivo = response.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] ?? nomePadrao
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = arquivo
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}

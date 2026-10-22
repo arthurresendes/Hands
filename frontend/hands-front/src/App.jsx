@@ -21,6 +21,8 @@ import AdminDashboard from './pages/AdminDashboard'
 import AdminClients from './pages/AdminClients'
 import AdminProviders from './pages/AdminProviders'
 import AdminReviews from './pages/AdminReviews'
+import AdminClientDetail from './pages/AdminClientDetail'
+import AdminProviderDetail from './pages/AdminProviderDetail'
 import ForgotPasswordEmail from './pages/ForgotPasswordEmail'
 import ForgotPasswordCode from './pages/ForgotPasswordCode'
 import ForgotPasswordReset from './pages/ForgotPasswordReset'
@@ -55,6 +57,8 @@ export default function App() {
           <Route path="/admin/painel" element={<AdminDashboard />} />
           <Route path="/admin/clientes" element={<AdminClients />} />
           <Route path="/admin/prestadores" element={<AdminProviders />} />
+          <Route path="/admin/clientes/:id" element={<AdminClientDetail />} />
+          <Route path="/admin/prestadores/:id" element={<AdminProviderDetail />} />
           <Route path="/admin/avaliacoes" element={<AdminReviews />} />
         </Route>
         <Route path="/recuperar-senha/:role" element={<ForgotPasswordEmail />} />

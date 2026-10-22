@@ -30,3 +30,7 @@ export function formatarMoeda(valor) {
   if (valor === null || valor === undefined) return ''
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
+
+export function formatarData(dataIso) {
+  return dataIso ? new Date(dataIso).toLocaleDateString('pt-BR') : ''
+}
