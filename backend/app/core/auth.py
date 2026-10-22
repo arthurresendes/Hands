@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from pytz import timezone
 import jwt
 from typing import Optional
+from fastapi import Response
 from core.configs import settings
 from core.security import verificar_senha
 from core.database import cliente_col, prestador_col, admin_col
@@ -25,6 +26,17 @@ def criar_token_acesso(sub: str, role: str) -> str:
         role=role,
         tempo_vida=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
+def setar_cookie_acesso(response: Response, token: str):
+    response.set_cookie(
+        key=settings.COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+
 # Autenticação
 async def autenticar_cliente(email: str, senha: str) -> Optional[dict]:
     usuario = await cliente_col.find_one({"email": email})

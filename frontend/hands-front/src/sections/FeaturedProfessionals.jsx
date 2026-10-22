@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { CheckIcon, PinIcon } from '../components/icons'
+import Avatar from '../components/Avatar'
 import useFetch from '../hooks/useFetch'
 import { getPrestadoresDestaque } from '../services/landing'
 
@@ -71,7 +72,9 @@ export default function FeaturedProfessionals() {
               className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:shadow-gray-200 hover:-translate-y-1 transition-all group"
             >
               <div className="relative h-48 bg-[#F3F4F6] flex items-center justify-center overflow-hidden">
-                <div className="w-16 h-16 rounded-full bg-gray-300" />
+                <Avatar papel="prestador" id={p.id} className="w-16 h-16 rounded-full">
+                  <div className="w-16 h-16 rounded-full bg-gray-300" />
+                </Avatar>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                 <div className="absolute top-3 left-3">
                   <span className="inline-flex items-center gap-1 bg-[#5B2EFF] text-white text-xs font-bold px-2.5 py-1 rounded-full">

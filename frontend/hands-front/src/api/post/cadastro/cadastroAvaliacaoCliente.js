@@ -3,6 +3,7 @@ const API_URL = `${BASE_URL}/api/v1/avaliar_clientes`;
 
 export const cadastroAvaliacaoCliente = async (payload) => {
   const response = await fetch(API_URL, {
+    credentials: "include",
     method: "POST",
     headers: {
       "Content-Type": "application/json",

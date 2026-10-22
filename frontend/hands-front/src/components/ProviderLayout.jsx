@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Logo from './Logo'
+import Avatar from './Avatar'
+import useAuth from '../hooks/useAuth'
 import { UsersIcon, StarOutlineIcon, UserIcon, MenuIcon, CloseIcon, LogoutIcon, ChevronDownIcon } from './icons'
 
 const navLinks = [
@@ -12,6 +14,11 @@ const navLinks = [
 
 export default function ProviderLayout({ children }) {
   const navigate = useNavigate()
+  const { usuario, logout } = useAuth()
+  const sair = async () => {
+    await logout()
+    navigate('/')
+  }
   const [mobileOpen, setMobileOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -42,10 +49,12 @@ export default function ProviderLayout({ children }) {
               onBlur={() => setTimeout(() => setMenuOpen(false), 150)}
               className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-gray-200 hover:border-[#5B2EFF]/30 transition-colors"
             >
-              <span className="w-8 h-8 rounded-full bg-[#FFC857]/15 flex items-center justify-center" style={{ color: '#B8860B' }}>
-                <UserIcon width={16} height={16} />
-              </span>
-              <span className="text-sm font-semibold text-[#1F2937]">Marcos Silva</span>
+              <Avatar papel="prestador" id={usuario?.id} className="w-8 h-8 rounded-full">
+                <span className="w-8 h-8 rounded-full bg-[#FFC857]/15 flex items-center justify-center" style={{ color: '#B8860B' }}>
+                  <UserIcon width={16} height={16} />
+                </span>
+              </Avatar>
+              <span className="text-sm font-semibold text-[#1F2937]">{usuario?.nome}</span>
               <ChevronDownIcon className={`text-gray-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
             </button>
             {menuOpen && (
@@ -59,7 +68,7 @@ export default function ProviderLayout({ children }) {
                     Minha Conta
                   </button>
                   <button
-                    onMouseDown={() => navigate('/')}
+                    onMouseDown={sair}
                     className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl hover:bg-red-50 transition-colors text-left text-sm font-medium text-red-500"
                   >
                     <LogoutIcon width={14} height={14} />
@@ -89,7 +98,7 @@ export default function ProviderLayout({ children }) {
             ))}
             <div className="border-t border-gray-100 mt-2 pt-3">
               <button
-                onClick={() => navigate('/')}
+                onClick={sair}
                 className="flex items-center gap-2.5 text-sm font-semibold text-red-500 text-left py-2.5"
               >
                 <LogoutIcon width={16} height={16} />

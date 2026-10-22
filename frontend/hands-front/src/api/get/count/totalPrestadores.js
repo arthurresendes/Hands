@@ -3,6 +3,7 @@ const API_URL = `${BASE_URL}/api/v1/total_prestadores`;
 
 export const totalPrestadores = async () => {
   const response = await fetch(API_URL, {
+    credentials: "include",
     method: "GET",
     headers: {
       "Content-Type": "application/json",

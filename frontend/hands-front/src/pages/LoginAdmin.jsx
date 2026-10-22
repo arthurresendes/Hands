@@ -1,13 +1,30 @@
 import FormField from '../components/FormField'
 import { ShieldLockIcon, MailIcon, LockIcon } from '../components/icons'
+import useAuth from '../hooks/useAuth'
+import { inicioPorPapel } from '../utils/rotasPorPapel'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 export default function LoginAdmin() {
   const navigate = useNavigate()
+  const { login } = useAuth()
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [erro, setErro] = useState('')
+  const [enviando, setEnviando] = useState(false)
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    navigate('/admin/painel')
+    setErro('')
+    setEnviando(true)
+    try {
+      const usuario = await login('admin', email, senha)
+      navigate(inicioPorPapel[usuario.role])
+    } catch (error) {
+      setErro(error.message)
+    } finally {
+      setEnviando(false)
+    }
   }
   return (
     <div className="min-h-screen bg-[#1F2937] flex items-center justify-center px-6">
@@ -23,15 +40,18 @@ export default function LoginAdmin() {
         </div>
 
         <form className="space-y-5 bg-white rounded-2xl p-8 shadow-2xl" onSubmit={handleLogin}>
-          <FormField label="E-mail administrativo" type="email" placeholder="admin@hands.com" Icon={MailIcon} />
-          <FormField label="Senha" type="password" placeholder="Digite sua senha" Icon={LockIcon} />
+          <FormField label="E-mail administrativo" type="email" placeholder="admin@hands.com" Icon={MailIcon} name="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <FormField label="Senha" type="password" placeholder="Digite sua senha" Icon={LockIcon} name="senha" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
+
+          {erro && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-3">{erro}</p>}
 
           <button
             type="submit"
-            className="w-full bg-[#1F2937] hover:bg-black text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
+            disabled={enviando}
+            className="w-full bg-[#1F2937] hover:bg-black disabled:opacity-60 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
             style={{ fontFamily: 'Outfit, sans-serif' }}
           >
-            Acessar painel
+            {enviando ? 'Entrando...' : 'Acessar painel'}
           </button>
         </form>
 

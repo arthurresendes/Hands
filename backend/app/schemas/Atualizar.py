@@ -11,6 +11,7 @@ class AtualizarCliente(BaseModel):
     cpf: Optional[str] = None
     informacoes: Optional[str] = None
     senha: Optional[str] = None
+    senha_atual: Optional[str] = None
 
 class AtualizarPrestador(BaseModel):
     id: str
@@ -23,6 +24,7 @@ class AtualizarPrestador(BaseModel):
     informacoes: Optional[str] = None
     valor: Optional[float] = None
     senha: Optional[str] = None
+    senha_atual: Optional[str] = None
     servicos: Optional[list[str]] = None
     idiomas: Optional[list[str]] = None
     certificacoes: Optional[list[str]] = None
