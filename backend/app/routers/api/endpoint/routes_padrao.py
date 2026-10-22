@@ -1,16 +1,41 @@
-from fastapi import APIRouter,status,HTTPException,Request,Depends,Form,File,UploadFile,Response
+from fastapi import APIRouter,status,HTTPException,Request,Depends,Form,File,UploadFile,Response,Query
+from bson import ObjectId
+from bson.errors import InvalidId
 from fastapi.responses import FileResponse
 from src.mongo.query import listagem_clientes,listagem_prestadores,deletar_por_email, busca_especifica_cliente,busca_especifica_prestador,atualizar,atualizar_senha,atualizar_cpf,atualizar_cep,avaliar_hands, listagem_avaliacoes_hands,avaliar_pessoas,listagem_avaliacoes_clientes,listagem_avaliacoes_prestadores,ver_avaliacoes_recebidas,ver_avaliacoes_entregues,total_prestadores,total_clientes,estatisticas_landing,categorias_populares,prestadores_destaque,avaliacoes_hands_landing
 from src.mongo.criacao import adicionar_cliente,adicionar_prestador
 from schemas.Cadastro import Cliente,Prestador
 from schemas.Atualizar import AtualizarCliente,AtualizarPrestador
 from schemas.Avaliar import Avaliacao,AvaliacaoPessoas
-from core.database import cliente_col,prestador_col
+from schemas.Favorito import Favorito
+from core.database import cliente_col,prestador_col,favorito_col
+from core.security import verificar_senha
+from src.mongo.busca import buscar_prestadores,detalhe_prestador,listar_favoritos,favoritar,desfavoritar,perfil_cliente,minha_avaliacao_hands
 from core.auth import criar_token_acesso,setar_cookie_acesso
 from core.deps import exigir_usuario,get_token_payload,obter_token_do_cookie
 from src.armazenamento import preparar_foto,salvar_foto,caminho_foto,remover_foto
 
 router = APIRouter(prefix="/api/v1")
+
+COLECOES_ATUALIZAVEIS = {'cliente': cliente_col, 'prestador': prestador_col}
+
+async def validar_alteracoes_sensiveis(papel: str, id_usuario: str, email_novo, senha_nova, senha_atual, usuario: dict, email_atual: str):
+    if email_novo is not None and email_novo.strip() != email_atual:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Não é possível alterar o e-mail da conta.")
+    if senha_nova is None:
+        return
+    if len(senha_nova) < 6:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A nova senha deve ter pelo menos 6 caracteres.")
+    if usuario['role'] == 'admin':
+        return
+    if not senha_atual:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Informe a senha atual para trocar a senha.")
+    try:
+        documento = await COLECOES_ATUALIZAVEIS[papel].find_one({'_id': ObjectId(id_usuario)}, {'senha': 1})
+    except InvalidId:
+        documento = None
+    if documento is None or not verificar_senha(senha_atual, documento['senha']):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Senha atual incorreta.")
 
 def garantir_dono_ou_admin(usuario: dict, email: str):
     if usuario['role'] != 'admin' and usuario.get('email') != email.strip():
@@ -40,6 +65,48 @@ async def ver_total_cliente_api():
 async def ver_total_prestadores_api():
     total = await total_prestadores()
     return {"totalPrestadores": total}
+
+@router.get('/prestadores', tags=['GET'], status_code=status.HTTP_200_OK, summary='Buscar prestadores com filtros')
+async def buscar_prestadores_endpoint(
+    q: str | None = Query(None, max_length=100),
+    nome: str | None = Query(None, max_length=100),
+    email: str | None = Query(None, max_length=100),
+    servico: str | None = Query(None, max_length=60),
+    cidade: str | None = Query(None, max_length=60),
+    estado: str | None = Query(None, max_length=2),
+    idioma: str | None = Query(None, max_length=40),
+    cep: str | None = Query(None, max_length=10),
+    raio_km: float | None = Query(None, gt=0, le=500),
+    nota_minima: float | None = Query(None, ge=0, le=5),
+    valor_min: float | None = Query(None, ge=0),
+    valor_max: float | None = Query(None, ge=0),
+    somente_favoritos: bool = False,
+    ordenar: str | None = Query(None, pattern='^(relevancia|nota|preco|nome|distancia|avaliacoes)$'),
+    pagina: int = Query(1, ge=1),
+    limite: int = Query(12, ge=1, le=50),
+    usuario: dict = Depends(exigir_usuario('cliente','admin')),
+):
+    return await buscar_prestadores(
+        usuario.get('email'), q=q, nome=nome, email=email, servico=servico, cidade=cidade, estado=estado,
+        idioma=idioma, cep=cep, raio_km=raio_km, nota_minima=nota_minima, valor_min=valor_min,
+        valor_max=valor_max, somente_favoritos=somente_favoritos, ordenar=ordenar, pagina=pagina, limite=limite
+    )
+
+@router.get('/prestadores/{id_prestador}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Perfil completo de um prestador')
+async def ver_prestador(id_prestador: str, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
+    return await detalhe_prestador(id_prestador, usuario.get('email'))
+
+@router.get('/favoritos', tags=['GET'], status_code=status.HTTP_200_OK, summary='Prestadores favoritos do cliente')
+async def ver_favoritos(usuario: dict = Depends(exigir_usuario('cliente'))):
+    return {'prestadores': await listar_favoritos(usuario['email'])}
+
+@router.get('/cliente/perfil', tags=['GET'], status_code=status.HTTP_200_OK, summary='Dados do perfil do cliente logado')
+async def ver_perfil_cliente(usuario: dict = Depends(exigir_usuario('cliente'))):
+    return await perfil_cliente(usuario['id'])
+
+@router.get('/avaliar_hands/minha', tags=['GET'], status_code=status.HTTP_200_OK, summary='Minha avaliação do Hands')
+async def ver_minha_avaliacao_hands(usuario: dict = Depends(exigir_usuario('cliente','prestador'))):
+    return {'avaliacao': await minha_avaliacao_hands(usuario['email'])}
 
 @router.get('/ver_avaliacoes_hands', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todas avaliações')
 async def ver_avaliacoes_hands(usuario: dict = Depends(exigir_usuario('admin'))):
@@ -103,7 +170,7 @@ async def ver_foto(papel: str, id_usuario: str, request: Request):
     caminho = caminho_foto(papel, id_usuario)
     if caminho is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Foto não encontrada.")
-    return FileResponse(caminho, media_type='image/jpeg')
+    return FileResponse(caminho, media_type='image/jpeg', headers={'Cache-Control': 'no-cache'})
 
 # Rotas POST
 @router.post('/cadastrar_cliente', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Cadastro de clientes')
@@ -196,13 +263,20 @@ async def avaliar_hands_endpoint(avaliar: Avaliacao, usuario: dict = Depends(exi
 
 @router.post("/avaliar_prestador", tags=["POST"], summary="Avaliar prestadores", status_code=status.HTTP_201_CREATED)
 async def avaliar_prestador(avaliar: AvaliacaoPessoas, usuario: dict = Depends(exigir_usuario('cliente'))):
-    res = await avaliar_pessoas("feedback_prestador", usuario['email'], avaliar.para,  avaliar.nota, avaliar.mensagem)
+    if await prestador_col.find_one({'email': avaliar.para.strip()}, {'_id': 1}) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prestador não encontrado.")
+    res = await avaliar_pessoas("feedback_prestador", usuario['email'], avaliar.para.strip(),  avaliar.nota, avaliar.mensagem.strip())
     return {'id_resultado': str(res)}
 
 @router.post("/avaliar_clientes", tags=["POST"], summary="Avaliar clientes", status_code=status.HTTP_201_CREATED)
 async def avaliar_clientes(avaliar: AvaliacaoPessoas, usuario: dict = Depends(exigir_usuario('prestador'))):
     res = await avaliar_pessoas("feedback_cliente", usuario['email'], avaliar.para,  avaliar.nota, avaliar.mensagem)
     return {'id_resultado': str(res)}
+
+@router.post('/favoritos', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Favoritar prestador pelo e-mail')
+async def adicionar_favorito(favorito: Favorito, usuario: dict = Depends(exigir_usuario('cliente'))):
+    await favoritar(usuario['email'], favorito.email)
+    return {'favorito': True}
 
 # Rotas PATCH
 @router.patch('/atualizar_cliente', tags=["PATCH"], status_code=status.HTTP_202_ACCEPTED, summary="Atualizando dados do cliente")
@@ -213,18 +287,7 @@ async def atualizar_cliente(cliente: AtualizarCliente, usuario: dict = Depends(e
     collection_name = "cliente"
     if cliente_busca is None:
         raise HTTPException(detail="Cliente não encontrado", status_code=status.HTTP_404_NOT_FOUND)
-    if cliente.nome is not None:
-        await atualizar(collection_name,cliente.id, "nome", cliente.nome)
-    if cliente.email is not None:
-        await atualizar(collection_name,cliente.id, "email", cliente.email)
-    if cliente.celular is not None:
-        await atualizar(collection_name,cliente.id, "celular", cliente.celular)
-    if cliente.idade is not None:
-        await atualizar(collection_name,cliente.id, "idade", cliente.idade)
-    if cliente.informacoes is not None:
-        await atualizar(collection_name,cliente.id, "informacoes", cliente.informacoes)
-    if cliente.senha is not None:
-        await atualizar_senha(collection_name,cliente.id, cliente.senha)
+    await validar_alteracoes_sensiveis(collection_name, cliente.id, cliente.email, cliente.senha, cliente.senha_atual, usuario, cliente_busca['email'])
     if cliente.cpf is not None:
         resultado_cpf = await atualizar_cpf(collection_name,cliente.id, cliente.cpf)
         if isinstance(resultado_cpf, dict) and "Erro" in resultado_cpf:
@@ -233,6 +296,16 @@ async def atualizar_cliente(cliente: AtualizarCliente, usuario: dict = Depends(e
         resultado_cep = await atualizar_cep(collection_name,cliente.id, cliente.cep)
         if isinstance(resultado_cep, dict) and "Erro" in resultado_cep:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=resultado_cep["Erro"])
+    if cliente.nome is not None:
+        await atualizar(collection_name,cliente.id, "nome", cliente.nome)
+    if cliente.celular is not None:
+        await atualizar(collection_name,cliente.id, "celular", cliente.celular)
+    if cliente.idade is not None:
+        await atualizar(collection_name,cliente.id, "idade", cliente.idade)
+    if cliente.informacoes is not None:
+        await atualizar(collection_name,cliente.id, "informacoes", cliente.informacoes)
+    if cliente.senha is not None:
+        await atualizar_senha(collection_name,cliente.id, cliente.senha)
     cliente_atualizado = await busca_especifica_cliente(cliente.id)
     return cliente_atualizado
 
@@ -243,11 +316,10 @@ async def atualizar_prestador(prestador: AtualizarPrestador, usuario: dict = Dep
     prestador_busca = await busca_especifica_prestador(prestador.id)
     collection_name = "prestador"
     if prestador_busca is None:
-        raise HTTPException(detail="Cliente não encontrado", status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(detail="Prestador não encontrado", status_code=status.HTTP_404_NOT_FOUND)
+    await validar_alteracoes_sensiveis(collection_name, prestador.id, prestador.email, prestador.senha, prestador.senha_atual, usuario, prestador_busca['email'])
     if prestador.nome is not None:
         await atualizar(collection_name,prestador.id, "nome", prestador.nome)
-    if prestador.email is not None:
-        await atualizar(collection_name,prestador.id, "email", prestador.email)
     if prestador.celular is not None:
         await atualizar(collection_name,prestador.id, "celular", prestador.celular)
     if prestador.idade is not None:
@@ -276,6 +348,11 @@ async def atualizar_prestador(prestador: AtualizarPrestador, usuario: dict = Dep
     return prestador_atualizado
 
 # Rotas DELETE
+@router.delete('/favoritos/{email_prestador}', tags=["DELETE"], status_code=status.HTTP_200_OK, summary='Remover prestador dos favoritos')
+async def remover_favorito(email_prestador: str, usuario: dict = Depends(exigir_usuario('cliente'))):
+    await desfavoritar(usuario['email'], email_prestador)
+    return {'favorito': False}
+
 @router.delete('/deletar_prestador/{email}', tags=["DELETE"], status_code=status.HTTP_204_NO_CONTENT, summary="Deletando prestador por email")
 async def deletar_prestador(email: str, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
     garantir_dono_ou_admin(usuario, email)
@@ -284,6 +361,7 @@ async def deletar_prestador(email: str, usuario: dict = Depends(exigir_usuario('
         resultado = await deletar_por_email('prestador', email)
         if alvo is not None:
             remover_foto('prestador', str(alvo['_id']))
+        await favorito_col.delete_many({'prestador': email.strip()})
         return resultado
     except HTTPException:
         raise 
@@ -301,6 +379,7 @@ async def deletar_cliente(email: str, usuario: dict = Depends(exigir_usuario('cl
         resultado = await deletar_por_email('cliente', email)
         if alvo is not None:
             remover_foto('cliente', str(alvo['_id']))
+        await favorito_col.delete_many({'cliente': email.strip()})
     except HTTPException:
         raise
     except Exception as error:

@@ -119,13 +119,18 @@ async def deletar_por_email(collection_name: str, email: str):
     return
 
 async def avaliar_hands(email: str, facilidade: float,qualidade: float, confiabilidade: float, nota: float,mensagem: str):
-    result = await feedback_hands_col.insert_one({'avaliador': email, 'nota': {'facilidade': facilidade, 'qualidade': qualidade ,'confiabilidade': confiabilidade, 'notaGeral': nota}, 'mensagem': mensagem, 'data_avaliacao': datetime.now()})
-    return result.inserted_id
+    filtro = {'avaliador': email}
+    documento = {'avaliador': email, 'nota': {'facilidade': facilidade, 'qualidade': qualidade ,'confiabilidade': confiabilidade, 'notaGeral': nota}, 'mensagem': mensagem, 'data_avaliacao': datetime.now()}
+    await feedback_hands_col.replace_one(filtro, documento, upsert=True)
+    salvo = await feedback_hands_col.find_one(filtro, {'_id': 1})
+    return salvo['_id']
 
 async def avaliar_pessoas(collectionName,de: str,para: str, nota: float, mensagem: str):
     collection = db[collectionName]
-    result = await collection.insert_one({'avaliador': de,'avaliado': para, 'nota': nota,'mensagem': mensagem})
-    return result.inserted_id
+    filtro = {'avaliador': de, 'avaliado': para}
+    await collection.replace_one(filtro, {'avaliador': de,'avaliado': para, 'nota': nota,'mensagem': mensagem, 'data_avaliacao': datetime.now()}, upsert=True)
+    salvo = await collection.find_one(filtro, {'_id': 1})
+    return salvo['_id']
 
 async def ver_avaliacoes_entregues(collectionName, email: str):
     collection = db[collectionName]
