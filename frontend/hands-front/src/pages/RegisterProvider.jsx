@@ -1,3 +1,4 @@
+import { mensagemIdade, propsCampoIdade } from '../utils/validacoes'
 import LinkTermos from '../components/LinkTermos'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -38,6 +39,11 @@ export default function RegisterProvider() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setErro('')
+    const erroIdade = mensagemIdade(form.idade)
+    if (erroIdade) {
+      setErro(erroIdade)
+      return
+    }
     if (form.senha !== form.confirmar) {
       setErro('As senhas não conferem.')
       return
@@ -93,7 +99,7 @@ export default function RegisterProvider() {
 
         <div className="grid grid-cols-2 gap-4">
           <FormField label="CPF" placeholder="000.000.000-00" Icon={IdCardIcon} name="cpf" value={form.cpf} onChange={alterar} />
-          <FormField label="Idade" type="number" min="0" max="130" placeholder="Ex: 32" name="idade" value={form.idade} onChange={alterar} />
+          <FormField label="Idade" type="number" {...propsCampoIdade} placeholder="Ex: 32" name="idade" value={form.idade} onChange={alterar} />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

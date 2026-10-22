@@ -1,3 +1,4 @@
+import { mensagemIdade, propsCampoIdade } from '../utils/validacoes'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ClientLayout from '../components/ClientLayout'
@@ -48,6 +49,11 @@ export default function ClientProfile() {
   const salvarDados = async (e) => {
     e.preventDefault()
     setAvisoDados(null)
+    const erroIdade = mensagemIdade(form.idade)
+    if (erroIdade) {
+      setAvisoDados({ tipo: 'erro', texto: erroIdade })
+      return
+    }
     setSalvando(true)
     try {
       const alteracoes = {
@@ -131,7 +137,7 @@ export default function ClientProfile() {
                 <FormField label="E-mail" type="email" Icon={MailIcon} value={perfil.email ?? ''} disabled required={false} readOnly />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField label="CPF" Icon={IdCardIcon} value={perfil.cpf_mascarado ?? ''} disabled required={false} readOnly />
-                  <FormField label="Idade" type="number" min="0" max="130" name="idade" value={form.idade} onChange={alterar} />
+                  <FormField label="Idade" type="number" {...propsCampoIdade} name="idade" value={form.idade} onChange={alterar} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField label="CEP" placeholder="00000-000" Icon={PinIcon} name="cep" value={form.cep} onChange={alterar} />

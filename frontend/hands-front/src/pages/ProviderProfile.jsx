@@ -1,3 +1,4 @@
+import { mensagemIdade, propsCampoIdade } from '../utils/validacoes'
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ProviderLayout from '../components/ProviderLayout'
@@ -74,6 +75,11 @@ export default function ProviderProfile() {
   const salvarDados = async (e) => {
     e.preventDefault()
     setAvisoDados(null)
+    const erroIdade = mensagemIdade(form.idade)
+    if (erroIdade) {
+      setAvisoDados({ tipo: 'erro', texto: erroIdade })
+      return
+    }
     if (form.servicos.length === 0) {
       setAvisoDados({ tipo: 'erro', texto: 'Selecione ao menos um serviço.' })
       return
@@ -179,7 +185,7 @@ export default function ProviderProfile() {
                   <FormField label="E-mail" type="email" Icon={MailIcon} value={perfil.email ?? ''} disabled required={false} readOnly />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField label="CPF" Icon={IdCardIcon} value={perfil.cpf_mascarado ?? ''} disabled required={false} readOnly />
-                    <FormField label="Idade" type="number" min="0" max="130" name="idade" value={form.idade} onChange={alterar} />
+                    <FormField label="Idade" type="number" {...propsCampoIdade} name="idade" value={form.idade} onChange={alterar} />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <FormField label="CEP" placeholder="00000-000" Icon={PinIcon} name="cep" value={form.cep} onChange={alterar} />

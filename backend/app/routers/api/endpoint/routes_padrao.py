@@ -41,6 +41,17 @@ async def validar_alteracoes_sensiveis(papel: str, id_usuario: str, email_novo, 
     if documento is None or not verificar_senha(senha_atual, documento['senha']):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Senha atual incorreta.")
 
+IDADE_MINIMA = 18
+IDADE_MAXIMA = 100
+
+def validar_idade(idade: int | None):
+    if idade is None:
+        return
+    if idade < IDADE_MINIMA:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"É necessário ter {IDADE_MINIMA} anos ou mais para usar o Hands.")
+    if idade > IDADE_MAXIMA:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Informe uma idade válida.")
+
 def garantir_dono_ou_admin(usuario: dict, email: str):
     if usuario['role'] != 'admin' and usuario.get('email') != email.strip():
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não autorizado a este recurso.")
@@ -318,13 +329,14 @@ async def cadastro_cliente(
     nome: str = Form(..., min_length=1),
     email: str = Form(..., min_length=3),
     celular: str = Form(..., min_length=1),
-    idade: int = Form(..., ge=0, le=130),
+    idade: int = Form(...),
     cep: str = Form(..., min_length=8),
     cpf: str = Form(..., min_length=11),
     informacoes: str = Form(''),
     senha: str = Form(..., min_length=6),
     foto: UploadFile | None = File(None),
 ):
+    validar_idade(idade)
     email = email.strip()
     foto_pronta = await preparar_foto(foto)
     check_user = await cliente_col.find_one({'email': email})
@@ -346,7 +358,7 @@ async def cadastro_prestador(
     nome: str = Form(..., min_length=1),
     email: str = Form(..., min_length=3),
     celular: str = Form(..., min_length=1),
-    idade: int = Form(..., ge=0, le=130),
+    idade: int = Form(...),
     cep: str = Form(..., min_length=8),
     cpf: str = Form(..., min_length=11),
     informacoes: str = Form(''),
@@ -357,6 +369,7 @@ async def cadastro_prestador(
     certificacoes: list[str] = Form([]),
     foto: UploadFile | None = File(None),
 ):
+    validar_idade(idade)
     email = email.strip()
     if not servicos:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selecione o serviço oferecido.")
@@ -428,6 +441,7 @@ async def atualizar_cliente(cliente: AtualizarCliente, usuario: dict = Depends(e
     collection_name = "cliente"
     if cliente_busca is None:
         raise HTTPException(detail="Cliente não encontrado", status_code=status.HTTP_404_NOT_FOUND)
+    validar_idade(cliente.idade)
     await validar_alteracoes_sensiveis(collection_name, cliente.id, cliente.email, cliente.senha, cliente.senha_atual, usuario, cliente_busca['email'])
     if cliente.cpf is not None:
         resultado_cpf = await atualizar_cpf(collection_name,cliente.id, cliente.cpf)
@@ -458,6 +472,7 @@ async def atualizar_prestador(prestador: AtualizarPrestador, usuario: dict = Dep
     collection_name = "prestador"
     if prestador_busca is None:
         raise HTTPException(detail="Prestador não encontrado", status_code=status.HTTP_404_NOT_FOUND)
+    validar_idade(prestador.idade)
     await validar_alteracoes_sensiveis(collection_name, prestador.id, prestador.email, prestador.senha, prestador.senha_atual, usuario, prestador_busca['email'])
     if prestador.servicos is not None and not [servico for servico in prestador.servicos if servico.strip()]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selecione ao menos um serviço oferecido.")
