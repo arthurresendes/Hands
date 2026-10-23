@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Logo from './Logo'
+import { rolarPara } from '../utils/rolagem'
 import { ChevronDownIcon, MenuIcon, CloseIcon, UserIcon, BriefcaseIcon } from './icons'
 
 const navLinks = [
@@ -18,7 +19,7 @@ export default function Header() {
   const [registerOpen, setRegisterOpen] = useState(false)
 
   const scrollTo = (anchor) => {
-    document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth' })
+    rolarPara(anchor)
     setMobileOpen(false)
   }
 

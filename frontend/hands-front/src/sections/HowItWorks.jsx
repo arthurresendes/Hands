@@ -27,7 +27,7 @@ export default function HowItWorks() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
           <span className="text-xs font-bold tracking-widest uppercase text-[#5B2EFF] mb-3 block">Passo a passo</span>
-          <h2 className="text-4xl font-black text-[#1F2937]" style={{ fontFamily: 'Outfit, sans-serif' }}>
+          <h2 className="text-3xl sm:text-4xl font-black text-[#1F2937]" style={{ fontFamily: 'Outfit, sans-serif' }}>
             Três passos para resolver o seu problema
           </h2>
         </div>

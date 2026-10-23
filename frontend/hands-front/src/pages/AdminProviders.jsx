@@ -1,99 +1,251 @@
+import { useCallback, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AdminLayout from '../components/AdminLayout'
-import { SearchIcon, FilterIcon, DownloadIcon, MoreIcon } from '../components/icons'
+import Avatar from '../components/Avatar'
+import Aviso from '../components/Aviso'
+import ModalConfirmacao from '../components/ModalConfirmacao'
+import Paginacao from '../components/Paginacao'
+import { SearchIcon, FilterIcon, DownloadIcon, EyeIcon, TrashIcon, UserIcon } from '../components/icons'
+import useEstadoPainel from '../hooks/useEstadoPainel'
+import useListaPaginada from '../hooks/useListaPaginada'
+import { listarPrestadoresAdmin } from '../api/get/admin/listagemPrestadoresAdmin'
+import { exportarPrestadoresAdmin } from '../api/get/admin/exportarPrestadoresAdmin'
+import { deletarPrestador } from '../api/delete/deletarPrestador'
+import { formatarData } from '../utils/formatadores'
 
-const prestadores = [
-  { name: 'Marcos Silva', email: 'marcos.silva@email.com', service: 'Eletricista', rating: 4.9, status: 'Verificado', date: '10/02/2025' },
-  { name: 'Ana Paula Costa', email: 'ana.costa@email.com', service: 'Diarista', rating: 5.0, status: 'Verificado', date: '22/02/2025' },
-  { name: 'Ricardo Souza', email: 'ricardo.souza@email.com', service: 'Encanador', rating: 4.8, status: 'Verificado', date: '15/03/2025' },
-  { name: 'Juliana Prado', email: 'juliana.prado2@email.com', service: 'Pintora', rating: 4.7, status: 'Pendente', date: '02/04/2025' },
-  { name: 'Carlos Henrique', email: 'carlos.henrique@email.com', service: 'Pedreiro', rating: 4.6, status: 'Verificado', date: '19/04/2025' },
-  { name: 'Patrícia Lima', email: 'patricia.lima@email.com', service: 'Jardinagem', rating: 4.9, status: 'Verificado', date: '30/04/2025' },
-  { name: 'Eduardo Fonseca', email: 'eduardo.fonseca2@email.com', service: 'Técnico de TI', rating: 4.5, status: 'Suspenso', date: '11/05/2025' },
-]
-
-function StatusBadge({ status }) {
-  const styles = {
-    Verificado: 'bg-green-50 text-green-600',
-    Pendente: 'bg-yellow-50 text-yellow-600',
-    Suspenso: 'bg-red-50 text-red-500',
-  }
-  return <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${styles[status]}`}>{status}</span>
+const FILTROS_INICIAIS = {
+  q: '',
+  servico: '',
+  nota_minima: '',
+  cidade: '',
+  estado: '',
+  cadastro_de: '',
+  cadastro_ate: '',
+  ordenar: '',
 }
 
+const classeCampo = 'w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#5B2EFF] placeholder-gray-400 bg-white'
+const ROTULO = { singular: 'prestador', plural: 'prestadores' }
+
 export default function AdminProviders() {
+  const navigate = useNavigate()
+  const [form, setForm] = useEstadoPainel('admin.prestadores.form', FILTROS_INICIAIS)
+  const [aplicado, setAplicado] = useEstadoPainel('admin.prestadores.aplicado', FILTROS_INICIAIS)
+  const [pagina, setPagina] = useEstadoPainel('admin.prestadores.pagina', 1)
+  const [painelAberto, setPainelAberto] = useEstadoPainel('admin.prestadores.painel', false)
+  const [exportando, setExportando] = useState(false)
+  const [erroAcao, setErroAcao] = useState('')
+  const [alvo, setAlvo] = useState(null)
+  const [excluindo, setExcluindo] = useState(false)
+  const [erroExclusao, setErroExclusao] = useState('')
+  const carregar = useCallback((filtros) => listarPrestadoresAdmin(filtros), [])
+  const { dados, carregando, erro, recarregar } = useListaPaginada(carregar, aplicado, pagina, 'admin.prestadores')
+
+  const alterar = (e) => setForm((atual) => ({ ...atual, [e.target.name]: e.target.value }))
+
+  const buscar = (e) => {
+    e.preventDefault()
+    setPagina(1)
+    setAplicado(form)
+  }
+
+  const limpar = () => {
+    setForm(FILTROS_INICIAIS)
+    setPagina(1)
+    setAplicado(FILTROS_INICIAIS)
+  }
+
+  const exportar = async () => {
+    setErroAcao('')
+    setExportando(true)
+    try {
+      await exportarPrestadoresAdmin(aplicado)
+    } catch (error) {
+      setErroAcao(error.message)
+    } finally {
+      setExportando(false)
+    }
+  }
+
+  const fecharModal = () => {
+    setAlvo(null)
+    setErroExclusao('')
+  }
+
+  const excluir = async () => {
+    setExcluindo(true)
+    setErroExclusao('')
+    try {
+      await deletarPrestador(alvo.email)
+      fecharModal()
+      recarregar()
+    } catch (error) {
+      setErroExclusao(error.message)
+    } finally {
+      setExcluindo(false)
+    }
+  }
+
+  const itens = dados?.prestadores ?? []
+
   return (
     <AdminLayout title="Prestadores" subtitle="Todos os profissionais cadastrados na plataforma">
-      <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row gap-3 shadow-sm border border-gray-100 mb-6">
-        <div className="flex-1 relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-            <SearchIcon width={18} height={18} />
-          </span>
-          <input readOnly placeholder="Buscar por nome, e-mail ou serviço" className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm outline-none placeholder-gray-400" />
+      <form onSubmit={buscar} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+              <SearchIcon width={18} height={18} />
+            </span>
+            <input name="q" value={form.q} onChange={alterar} placeholder="Buscar por nome, e-mail, telefone ou serviço" className={`${classeCampo} pl-11`} />
+          </div>
+          <button type="submit" className="bg-[#5B2EFF] hover:bg-[#4A25CC] text-white font-bold px-6 py-3 rounded-xl text-sm" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            Buscar
+          </button>
+          <button
+            type="button"
+            onClick={() => setPainelAberto(!painelAberto)}
+            className="flex items-center gap-2 text-sm font-semibold text-gray-500 border border-gray-200 px-5 py-3 rounded-xl hover:border-[#5B2EFF]/30 hover:text-[#5B2EFF] transition-colors"
+          >
+            <FilterIcon />
+            Filtrar
+          </button>
+          <button
+            type="button"
+            onClick={exportar}
+            disabled={exportando}
+            className="flex items-center gap-2 bg-[#1F2937] hover:bg-black disabled:opacity-60 text-white font-bold px-5 py-3 rounded-xl text-sm transition-colors"
+            style={{ fontFamily: 'Outfit, sans-serif' }}
+          >
+            <DownloadIcon />
+            {exportando ? 'Exportando...' : 'Exportar CSV'}
+          </button>
         </div>
-        <button className="flex items-center gap-2 text-sm font-semibold text-gray-500 border border-gray-200 px-5 py-3 rounded-xl hover:border-[#5B2EFF]/30 hover:text-[#5B2EFF] transition-colors">
-          <FilterIcon />
-          Filtrar
-        </button>
-        <button className="flex items-center gap-2 bg-[#5B2EFF] hover:bg-[#4A25CC] text-white font-bold px-5 py-3 rounded-xl text-sm transition-colors" style={{ fontFamily: 'Outfit, sans-serif' }}>
-          <DownloadIcon />
-          Exportar
-        </button>
-      </div>
+
+        {painelAberto && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100">
+            <input name="servico" value={form.servico} onChange={alterar} placeholder="Serviço (ex.: Eletricista)" className={classeCampo} />
+            <select name="nota_minima" value={form.nota_minima} onChange={alterar} className={classeCampo}>
+              <option value="">Qualquer avaliação</option>
+              <option value="3">3 estrelas ou mais</option>
+              <option value="4">4 estrelas ou mais</option>
+              <option value="4.5">4,5 estrelas ou mais</option>
+            </select>
+            <input name="cidade" value={form.cidade} onChange={alterar} placeholder="Cidade" className={classeCampo} />
+            <input name="estado" value={form.estado} onChange={alterar} maxLength={2} placeholder="UF" className={classeCampo} />
+            <label className="text-xs text-gray-400">
+              Cadastro a partir de
+              <input type="date" name="cadastro_de" value={form.cadastro_de} onChange={alterar} className={`${classeCampo} mt-1`} />
+            </label>
+            <label className="text-xs text-gray-400">
+              Cadastro até
+              <input type="date" name="cadastro_ate" value={form.cadastro_ate} onChange={alterar} className={`${classeCampo} mt-1`} />
+            </label>
+            <select name="ordenar" value={form.ordenar} onChange={alterar} className={classeCampo}>
+              <option value="">Ordenar: mais recentes</option>
+              <option value="antigos">Mais antigos</option>
+              <option value="nome">Nome (A-Z)</option>
+              <option value="nota">Melhor avaliação</option>
+            </select>
+            <button type="button" onClick={limpar} className="text-sm font-semibold text-gray-400 hover:text-[#5B2EFF] px-3 py-2 text-left">
+              Limpar filtros
+            </button>
+          </div>
+        )}
+      </form>
+
+      {(erro || erroAcao) && <div className="mb-5"><Aviso>{erro || erroAcao}</Aviso></div>}
 
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className={`overflow-x-auto ${carregando ? 'opacity-60' : ''}`}>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 text-left text-xs text-gray-400 uppercase tracking-wider">
                 <th className="px-6 py-4 font-semibold">Prestador</th>
-                <th className="px-6 py-4 font-semibold">Serviço</th>
+                <th className="px-6 py-4 font-semibold">Serviços</th>
                 <th className="px-6 py-4 font-semibold">Avaliação</th>
+                <th className="px-6 py-4 font-semibold">Telefone</th>
                 <th className="px-6 py-4 font-semibold">Cadastro</th>
-                <th className="px-6 py-4 font-semibold">Status</th>
-                <th className="px-6 py-4 font-semibold"></th>
+                <th className="px-6 py-4 font-semibold text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {prestadores.map((p) => (
-                <tr key={p.email} className="border-b border-gray-50 last:border-0 hover:bg-[#F8F6FF]/50 transition-colors">
+              {itens.map((item) => (
+                <tr
+                  key={item._id}
+                  onClick={() => navigate(`/admin/prestadores/${item._id}`)}
+                  className="border-b border-gray-50 last:border-0 hover:bg-[#F8F6FF]/50 transition-colors cursor-pointer"
+                >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-gray-200 flex-shrink-0" />
+                      <Avatar papel="prestador" id={item._id} className="w-9 h-9 rounded-full flex-shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-400">
+                          <UserIcon width={16} height={16} />
+                        </div>
+                      </Avatar>
                       <div>
-                        <p className="font-semibold text-[#1F2937]">{p.name}</p>
-                        <p className="text-xs text-gray-400">{p.email}</p>
+                        <p className="font-semibold text-[#1F2937]">{item.nome}</p>
+                        <p className="text-xs text-gray-400">{item.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-gray-500">{p.service}</td>
+                  <td className="px-6 py-4 text-gray-500">{item.servicos.length ? item.servicos.join(', ') : '—'}</td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1 font-semibold text-[#1F2937]">
-                      <svg width="13" height="13" viewBox="0 0 14 14" fill="#FFC857">
-                        <path d="M7 1l1.545 3.13 3.455.502-2.5 2.437.59 3.437L7 8.885 3.91 10.506l.59-3.437L2 4.632l3.455-.502L7 1z" />
-                      </svg>
-                      {p.rating}
-                    </span>
+                    {item.nota_media === null ? (
+                      <span className="text-gray-400">—</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 font-semibold text-[#1F2937]">
+                        <svg width="13" height="13" viewBox="0 0 14 14" fill="#FFC857">
+                          <path d="M7 1l1.545 3.13 3.455.502-2.5 2.437.59 3.437L7 8.885 3.91 10.506l.59-3.437L2 4.632l3.455-.502L7 1z" />
+                        </svg>
+                        {item.nota_media.toFixed(1)}
+                        <span className="text-xs font-normal text-gray-400">({item.total_avaliacoes})</span>
+                      </span>
+                    )}
                   </td>
-                  <td className="px-6 py-4 text-gray-500">{p.date}</td>
-                  <td className="px-6 py-4"><StatusBadge status={p.status} /></td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="text-gray-400 hover:text-[#5B2EFF] p-1.5">
-                      <MoreIcon />
-                    </button>
+                  <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{item.celular || '—'}</td>
+                  <td className="px-6 py-4 text-gray-500">{formatarData(item.cadastrado_em)}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/admin/prestadores/${item._id}`)
+                        }}
+                        aria-label="Ver detalhes"
+                        className="text-gray-400 hover:text-[#5B2EFF] p-2 rounded-lg"
+                      >
+                        <EyeIcon width={16} height={16} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setAlvo(item)
+                        }}
+                        aria-label="Excluir prestador"
+                        className="text-gray-400 hover:text-red-500 p-2 rounded-lg"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
-          <p className="text-xs text-gray-400">Mostrando 7 de 5.203 prestadores</p>
-          <div className="flex gap-2">
-            <button className="text-xs font-semibold text-gray-400 border border-gray-200 px-3 py-1.5 rounded-lg">Anterior</button>
-            <button className="text-xs font-semibold text-white bg-[#5B2EFF] px-3 py-1.5 rounded-lg">Próxima</button>
-          </div>
-        </div>
+        <Paginacao resultado={dados} rotulo={ROTULO} onMudar={setPagina} />
       </div>
+
+      <ModalConfirmacao
+        aberto={Boolean(alvo)}
+        titulo="Excluir prestador?"
+        texto={alvo ? `A conta de ${alvo.nome} (${alvo.email}) será excluída permanentemente. Essa ação não pode ser desfeita.` : ''}
+        confirmar="Excluir prestador"
+        carregando={excluindo}
+        erro={erroExclusao}
+        onConfirmar={excluir}
+        onCancelar={fecharModal}
+      />
     </AdminLayout>
   )
 }

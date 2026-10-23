@@ -1,79 +1,121 @@
+import { useEffect, useState } from 'react'
 import ProviderLayout from '../components/ProviderLayout'
-
-const ratingBars = [
-  { label: 'Pontualidade', pct: 95 },
-  { label: 'Qualidade do serviço', pct: 92 },
-  { label: 'Educação e atendimento', pct: 97 },
-]
-
-const reviews = [
-  { author: 'Beatriz Carvalho', rating: 5, city: 'São Paulo, SP', text: 'Excelente profissional, super pontual e capricho no serviço. Recomendo muito!' },
-  { author: 'Roberto Nascimento', rating: 5, city: 'Guarulhos, SP', text: 'Resolveu o problema rapidinho e o preço foi justo. Vou chamar de novo com certeza.' },
-  { author: 'Fernanda Lopes', rating: 4, city: 'Campinas, SP', text: 'Bom atendimento, chegou no horário combinado. Só achei o valor um pouco acima da média.' },
-  { author: 'Alexandre Mota', rating: 5, city: 'Santos, SP', text: 'Muito atencioso e explicou tudo que fez. Com certeza vou chamar de novo.' },
-]
-
-function Stars({ rating, size = 14 }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((s) => (
-        <svg key={s} width={size} height={size} viewBox="0 0 14 14" fill={s <= rating ? '#FFC857' : '#E5E7EB'}>
-          <path d="M7 1l1.545 3.13 3.455.502-2.5 2.437.59 3.437L7 8.885 3.91 10.506l.59-3.437L2 4.632l3.455-.502L7 1z" />
-        </svg>
-      ))}
-    </div>
-  )
-}
+import Avatar from '../components/Avatar'
+import Estrelas from '../components/Estrelas'
+import Aviso from '../components/Aviso'
+import useEstadoPainel from '../hooks/useEstadoPainel'
+import { UserIcon } from '../components/icons'
+import { listarAvaliacoesRecebidas } from '../api/get/avaliacao/avaliacoesRecebidasPrestador'
+import { tempoDesde, textoAvaliacoes } from '../utils/formatadores'
 
 export default function ProviderReviews() {
+  const [pagina, setPagina] = useEstadoPainel('prestador.avaliacoes.pagina', 1)
+  const [dados, setDados] = useEstadoPainel('prestador.avaliacoes.dados', null)
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState('')
+
+  useEffect(() => {
+    let ativo = true
+    setCarregando(true)
+    listarAvaliacoesRecebidas({ pagina })
+      .then((resposta) => ativo && setDados(resposta))
+      .catch((error) => ativo && setErro(error.message))
+      .finally(() => ativo && setCarregando(false))
+    return () => {
+      ativo = false
+    }
+  }, [pagina, setDados])
+
+  const resumo = dados?.resumo
+  const temAvaliacoes = resumo?.total > 0
+
   return (
     <ProviderLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-black text-[#1F2937]" style={{ fontFamily: 'Outfit, sans-serif' }}>
-          Avaliações
+          Minhas Avaliações
         </h1>
-        <p className="text-gray-500 mt-1">O que os clientes estão dizendo sobre o seu trabalho</p>
+        <p className="text-gray-500 mt-1">O que os clientes dizem sobre o seu trabalho</p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 mb-10">
-        <div className="flex-shrink-0 bg-[#5B2EFF] rounded-2xl p-8 text-center text-white min-w-[200px] flex flex-col items-center justify-center">
-          <p className="text-6xl font-black mb-1" style={{ fontFamily: 'Outfit, sans-serif' }}>4.9</p>
-          <Stars rating={5} size={18} />
-          <p className="text-white/70 text-sm mt-2">de 5.0</p>
-          <p className="text-white/50 text-xs mt-1">142 avaliações</p>
-        </div>
-        <div className="flex-1 bg-white rounded-2xl border border-gray-100 p-6">
-          <div className="space-y-3">
-            {ratingBars.map((item) => (
-              <div key={item.label} className="flex items-center gap-4">
-                <span className="text-sm text-gray-600 w-48 flex-shrink-0">{item.label}</span>
-                <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-2.5 bg-[#5B2EFF] rounded-full" style={{ width: `${item.pct}%` }} />
+      {erro && <div className="mb-6"><Aviso>{erro}</Aviso></div>}
+
+      {carregando && !dados && <div className="bg-white rounded-2xl h-96 animate-pulse" />}
+
+      {dados && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 h-fit">
+            <p className="text-5xl font-black text-[#1F2937]" style={{ fontFamily: 'Outfit, sans-serif' }}>
+              {temAvaliacoes ? resumo.media.toFixed(1) : '—'}
+            </p>
+            <div className="my-2">
+              <Estrelas nota={temAvaliacoes ? resumo.media : 0} tamanho={18} />
+            </div>
+            <p className="text-sm text-gray-400 mb-6">
+              {temAvaliacoes ? `com base em ${textoAvaliacoes(resumo.total)}` : 'Você ainda não recebeu avaliações'}
+            </p>
+            <div className="space-y-3">
+              {resumo.distribuicao.map((d) => (
+                <div key={d.estrelas} className="flex items-center gap-3 text-sm">
+                  <span className="w-6 text-gray-500">{d.estrelas}★</span>
+                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#FFC857] rounded-full" style={{ width: `${d.percentual}%` }} />
+                  </div>
+                  <span className="w-6 text-right text-gray-400">{d.total}</span>
                 </div>
-                <span className="text-sm font-bold text-[#5B2EFF] w-10 text-right">{item.pct}%</span>
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 space-y-4">
+            {dados.avaliacoes.length === 0 && (
+              <p className="text-center text-gray-400 text-sm py-16">Quando um cliente avaliar você, a avaliação aparece aqui.</p>
+            )}
+
+            {dados.avaliacoes.map((a) => (
+              <div key={a._id} className={`bg-white rounded-2xl border border-gray-100 p-6 ${carregando ? 'opacity-60' : ''}`}>
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar papel="cliente" id={a.autor_id} className="w-11 h-11 rounded-full">
+                      <div className="w-11 h-11 rounded-full bg-[#5B2EFF]/10 flex items-center justify-center text-[#5B2EFF]">
+                        <UserIcon width={18} height={18} />
+                      </div>
+                    </Avatar>
+                    <div>
+                      <p className="font-bold text-[#1F2937] text-sm">{a.autor}</p>
+                      <p className="text-xs text-gray-400">
+                        {[a.cidade, tempoDesde(a.data)].filter(Boolean).join(' • ')}
+                      </p>
+                    </div>
+                  </div>
+                  <Estrelas nota={a.nota} tamanho={14} />
+                </div>
+                {a.mensagem && <p className="text-sm text-gray-600 leading-relaxed">{a.mensagem}</p>}
               </div>
             ))}
+
+            {dados.total_paginas > 1 && (
+              <div className="flex items-center justify-center gap-4 pt-4">
+                <button
+                  onClick={() => setPagina(pagina - 1)}
+                  disabled={pagina <= 1}
+                  className="text-sm font-semibold border border-gray-200 px-5 py-2.5 rounded-xl text-gray-600 disabled:opacity-40 hover:border-[#5B2EFF]/30"
+                >
+                  Anterior
+                </button>
+                <span className="text-sm text-gray-500">Página {dados.pagina} de {dados.total_paginas}</span>
+                <button
+                  onClick={() => setPagina(pagina + 1)}
+                  disabled={pagina >= dados.total_paginas}
+                  className="text-sm font-semibold border border-gray-200 px-5 py-2.5 rounded-xl text-gray-600 disabled:opacity-40 hover:border-[#5B2EFF]/30"
+                >
+                  Próxima
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {reviews.map((r) => (
-          <div key={r.author} className="bg-white rounded-2xl border border-gray-100 p-6">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-300" />
-                <div>
-                  <p className="text-sm font-semibold text-[#1F2937]">{r.author}</p>
-                  <p className="text-xs text-gray-400">{r.city}</p>
-                </div>
-              </div>
-              <Stars rating={r.rating} />
-            </div>
-            <p className="text-sm text-gray-500 leading-relaxed">&ldquo;{r.text}&rdquo;</p>
-          </div>
-        ))}
-      </div>
+      )}
     </ProviderLayout>
   )
 }

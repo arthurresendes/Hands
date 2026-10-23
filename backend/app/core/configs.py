@@ -18,6 +18,18 @@ class Settings(BaseSettings):
     JWT_SECRET: str = os.getenv("JWT_SECRET")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 4
+    ACCESS_TOKEN_LEMBRAR_DIAS: int = 30
+
+    EMAIL_REMETENTE: str = os.getenv("EMAIL_REMETENTE", "")
+    EMAIL_SENHA: str = os.getenv("EMAIL_SENHA", "")
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+
+    RECUPERACAO_VALIDADE_MINUTOS: int = 10
+    RECUPERACAO_MAX_TENTATIVAS: int = 5
+    RECUPERACAO_REENVIO_SEGUNDOS: int = 60
+    RECUPERACAO_COOKIE_NAME: str = "reset_token"
+    RECUPERACAO_COOKIE_PATH: str = "/api/v1/recuperar-senha"
 
     COOKIE_NAME: str = "access_token"
     COOKIE_SECURE: bool = os.getenv("ENV", "dev") == "prod" 

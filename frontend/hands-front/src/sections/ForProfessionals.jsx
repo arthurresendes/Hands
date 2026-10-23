@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { CheckIcon } from '../components/icons'
+import useFetch from '../hooks/useFetch'
+import { getEstatisticas } from '../services/landing'
 
 const benefits = [
   'Cadastro rápido e gratuito',
@@ -10,19 +12,24 @@ const benefits = [
 
 export default function ForProfessionals() {
   const navigate = useNavigate()
+  const { data: estatisticas } = useFetch(getEstatisticas)
+  const totalPrestadores = estatisticas?.total_prestadores
+  const novosClientes = estatisticas?.novos_clientes_30_dias
 
   return (
-    <section className="py-24 bg-[#1F2937]">
+    <section id="para-profissionais" className="py-24 bg-[#1F2937]">
       <div className="max-w-6xl mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
           <div>
             <span className="text-xs font-bold tracking-widest uppercase text-[#FFC857] mb-3 block">Trabalhe Conosco</span>
-            <h2 className="text-4xl font-black text-white mb-5 leading-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            <h2 className="text-3xl sm:text-4xl font-black text-white mb-5 leading-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
               Multiplique seus clientes
             </h2>
             <p className="text-white/60 mb-8 leading-relaxed">
-              Junte-se a milhares de profissionais que já encontram novos clientes todos os dias
-              através do Hands, sem pagar comissão sobre seus serviços.
+              {totalPrestadores > 0
+                ? `Junte-se aos ${totalPrestadores.toLocaleString('pt-BR')} ${totalPrestadores === 1 ? 'profissional' : 'profissionais'} que já encontram`
+                : 'Junte-se aos profissionais que já encontram'}{' '}
+              novos clientes através do Hands, sem pagar comissão sobre seus serviços.
             </p>
             <div className="space-y-4 mb-10">
               {benefits.map((b) => (
@@ -49,10 +56,10 @@ export default function ForProfessionals() {
             </div>
             <div className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-xl px-6 py-4 flex items-center gap-3">
               <span className="w-10 h-10 rounded-full bg-[#5B2EFF]/10 flex items-center justify-center text-[#5B2EFF] font-black" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                +120
+                {novosClientes === undefined ? '—' : `+${novosClientes.toLocaleString('pt-BR')}`}
               </span>
               <div>
-                <p className="text-sm font-bold text-[#1F2937]">novos clientes</p>
+                <p className="text-sm font-bold text-[#1F2937]">{novosClientes === 1 ? 'novo cliente' : 'novos clientes'}</p>
                 <p className="text-xs text-gray-400">nos últimos 30 dias</p>
               </div>
             </div>

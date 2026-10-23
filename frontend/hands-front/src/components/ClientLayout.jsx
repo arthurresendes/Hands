@@ -1,17 +1,27 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Logo from './Logo'
-import { SearchIcon, UserIcon, StarOutlineIcon, HeartIcon, MenuIcon, CloseIcon, LogoutIcon, ChevronDownIcon } from './icons'
+import Avatar from './Avatar'
+import useAuth from '../hooks/useAuth'
+import { rotaAtiva } from '../utils/navegacao'
+import { SearchIcon, UserIcon, StarOutlineIcon, ChatIcon, HeartIcon, MenuIcon, CloseIcon, LogoutIcon, ChevronDownIcon } from './icons'
 
 const navLinks = [
-  { label: 'Buscar Profissionais', path: '/cliente/buscar', Icon: SearchIcon },
+  { label: 'Buscar Profissionais', path: '/cliente/buscar', tambem: ['/cliente/profissional'], Icon: SearchIcon },
   { label: 'Favoritos', path: '/cliente/favoritos', Icon: HeartIcon },
+  { label: 'Avaliações Feitas', path: '/cliente/avaliacoes-feitas', Icon: ChatIcon },
   { label: 'Avaliar o Hands', path: '/cliente/avaliar', Icon: StarOutlineIcon },
   { label: 'Minha Conta', path: '/cliente/perfil', Icon: UserIcon },
 ]
 
 export default function ClientLayout({ children }) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const { usuario, logout } = useAuth()
+  const sair = async () => {
+    await logout()
+    navigate('/')
+  }
   const [mobileOpen, setMobileOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -28,7 +38,8 @@ export default function ClientLayout({ children }) {
               <button
                 key={l.path}
                 onClick={() => navigate(l.path)}
-                className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#5B2EFF] hover:bg-[#5B2EFF]/5 px-4 py-2 rounded-xl transition-colors"
+                aria-current={rotaAtiva(pathname, l) ? 'page' : undefined}
+                className={`flex items-center gap-2 text-sm px-4 py-2 rounded-xl transition-colors ${rotaAtiva(pathname, l) ? 'text-[#5B2EFF] bg-[#5B2EFF]/10 font-semibold' : 'text-gray-500 hover:text-[#5B2EFF] hover:bg-[#5B2EFF]/5 font-medium'}`}
               >
                 <l.Icon width={16} height={16} />
                 {l.label}
@@ -42,10 +53,12 @@ export default function ClientLayout({ children }) {
               onBlur={() => setTimeout(() => setMenuOpen(false), 150)}
               className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-gray-200 hover:border-[#5B2EFF]/30 transition-colors"
             >
-              <span className="w-8 h-8 rounded-full bg-[#5B2EFF]/10 flex items-center justify-center text-[#5B2EFF]">
-                <UserIcon width={16} height={16} />
-              </span>
-              <span className="text-sm font-semibold text-[#1F2937]">Ana Beatriz</span>
+              <Avatar papel="cliente" id={usuario?.id} className="w-8 h-8 rounded-full">
+                <span className="w-8 h-8 rounded-full bg-[#5B2EFF]/10 flex items-center justify-center text-[#5B2EFF]">
+                  <UserIcon width={16} height={16} />
+                </span>
+              </Avatar>
+              <span className="text-sm font-semibold text-[#1F2937]">{usuario?.nome}</span>
               <ChevronDownIcon className={`text-gray-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
             </button>
             {menuOpen && (
@@ -59,7 +72,7 @@ export default function ClientLayout({ children }) {
                     Minha Conta
                   </button>
                   <button
-                    onMouseDown={() => navigate('/')}
+                    onMouseDown={sair}
                     className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl hover:bg-red-50 transition-colors text-left text-sm font-medium text-red-500"
                   >
                     <LogoutIcon width={14} height={14} />
@@ -81,7 +94,8 @@ export default function ClientLayout({ children }) {
               <button
                 key={l.path}
                 onClick={() => { navigate(l.path); setMobileOpen(false) }}
-                className="flex items-center gap-2.5 text-sm font-medium text-gray-600 text-left py-2.5"
+                aria-current={rotaAtiva(pathname, l) ? 'page' : undefined}
+                className={`flex items-center gap-2.5 text-sm text-left py-2.5 rounded-xl ${rotaAtiva(pathname, l) ? 'text-[#5B2EFF] bg-[#5B2EFF]/10 font-semibold px-3' : 'text-gray-600 font-medium'}`}
               >
                 <l.Icon width={16} height={16} />
                 {l.label}
@@ -89,7 +103,7 @@ export default function ClientLayout({ children }) {
             ))}
             <div className="border-t border-gray-100 mt-2 pt-3">
               <button
-                onClick={() => navigate('/')}
+                onClick={sair}
                 className="flex items-center gap-2.5 text-sm font-semibold text-red-500 text-left py-2.5"
               >
                 <LogoutIcon width={16} height={16} />
@@ -100,7 +114,7 @@ export default function ClientLayout({ children }) {
         )}
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-10">{children}</main>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">{children}</main>
     </div>
   )
 }

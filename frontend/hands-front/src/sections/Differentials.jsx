@@ -13,7 +13,7 @@ export default function Differentials() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
           <span className="text-xs font-bold tracking-widest uppercase text-[#5B2EFF] mb-3 block">Por que o Hands?</span>
-          <h2 className="text-4xl font-black text-[#1F2937] mb-3" style={{ fontFamily: 'Outfit, sans-serif' }}>Nossos Diferenciais</h2>
+          <h2 className="text-3xl sm:text-4xl font-black text-[#1F2937] mb-3" style={{ fontFamily: 'Outfit, sans-serif' }}>Nossos Diferenciais</h2>
           <p className="text-gray-500">A escolha mais segura e conveniente</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

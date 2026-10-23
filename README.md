@@ -22,7 +22,6 @@ Muitas pessoas têm dificuldade em encontrar profissionais confiáveis para serv
 | Autenticação | JWT + OAuth2 + Access/Refresh Token |
 | Segurança | Cookies HttpOnly + Rate Limiting |
 | Exportação de dados | PDF e XLSX |
-| Cache | LRU em memória |
 | Geolocalização | ViaCEP + BrasilAPI |
 | Versionamento | Git + GitHub |
 | CI/CD | Docker + GitHub Actions |

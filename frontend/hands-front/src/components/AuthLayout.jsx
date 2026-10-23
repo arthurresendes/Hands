@@ -47,7 +47,7 @@ export default function AuthLayout({ badge, title, subtitle, highlights, childre
         <p className="relative text-white/40 text-xs">&copy; 2026 Hands. Todos os direitos reservados.</p>
       </div>
 
-      <div className="flex-1 flex items-center justify-center bg-white px-6 py-16">
+      <div className="flex-1 flex items-center justify-center bg-white px-4 sm:px-6 py-10 sm:py-16">
         <div className="w-full max-w-md">
           <button onClick={() => navigate('/')} className="lg:hidden mb-10 block mx-auto">
             <Logo height={48} />

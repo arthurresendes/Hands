@@ -1,43 +1,41 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
+import Aviso from '../components/Aviso'
+import BotaoPrimario from '../components/BotaoPrimario'
 import FormField from '../components/FormField'
 import { MailIcon } from '../components/icons'
-
-const roleConfig = {
-  cliente: {
-    badge: 'Recuperar senha',
-    title: 'Vamos recuperar seu acesso',
-    subtitle: 'Informe o e-mail da sua conta de cliente para receber um código de verificação.',
-    highlights: ['Processo rápido e seguro', 'Código válido por alguns minutos', 'Você volta a acessar em segundos'],
-    loginPath: '/login',
-    placeholder: 'seuemail@exemplo.com',
-  },
-  prestador: {
-    badge: 'Recuperar senha',
-    title: 'Vamos recuperar seu acesso',
-    subtitle: 'Informe o e-mail da sua conta de profissional para receber um código de verificação.',
-    highlights: ['Processo rápido e seguro', 'Código válido por alguns minutos', 'Você volta a acessar em segundos'],
-    loginPath: '/login/prestador',
-    placeholder: 'seuemail@exemplo.com',
-  },
-}
+import useRecuperacaoSenha from '../hooks/useRecuperacaoSenha'
+import { solicitarCodigoRecuperacao } from '../api/post/recuperacao/solicitarCodigoRecuperacao'
+import { caminhoCodigo } from '../utils/recuperacaoSenha'
 
 export default function ForgotPasswordEmail() {
   const navigate = useNavigate()
-  const { role } = useParams()
-  const config = roleConfig[role] || roleConfig.cliente
+  const { config } = useRecuperacaoSenha()
+  const [email, setEmail] = useState('')
+  const [erro, setErro] = useState('')
+  const [enviando, setEnviando] = useState(false)
 
-  const handleSubmit = (e) => {
+  const enviar = async (e) => {
     e.preventDefault()
-    navigate(`/recuperar-senha/${role}/codigo`)
+    setErro('')
+    setEnviando(true)
+    try {
+      await solicitarCodigoRecuperacao(config.papel, email.trim())
+      navigate(caminhoCodigo(config), { state: { email: email.trim() } })
+    } catch (error) {
+      setErro(error.message)
+    } finally {
+      setEnviando(false)
+    }
   }
 
   return (
     <AuthLayout
-      badge={config.badge}
-      title={config.title}
-      subtitle={config.subtitle}
-      highlights={config.highlights}
+      badge="Recuperar senha"
+      title="Vamos recuperar seu acesso"
+      subtitle={`Informe o e-mail da sua conta de ${config.rotulo} para receber um código de verificação.`}
+      highlights={['Processo rápido e seguro', 'Código válido por 10 minutos', 'Você volta a acessar em segundos']}
     >
       <h1 className="text-2xl font-black text-[#1F2937] mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
         Esqueceu sua senha?
@@ -46,16 +44,22 @@ export default function ForgotPasswordEmail() {
         Digite o e-mail cadastrado e enviaremos um código de verificação para recuperar o acesso.
       </p>
 
-      <form className="space-y-5" onSubmit={handleSubmit}>
-        <FormField required label="E-mail" type="email" placeholder={config.placeholder} Icon={MailIcon} />
+      <form className="space-y-5" onSubmit={enviar}>
+        <FormField
+          required
+          label="E-mail"
+          type="email"
+          placeholder="seuemail@exemplo.com"
+          Icon={MailIcon}
+          name="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-        <button
-          type="submit"
-          className="w-full bg-[#5B2EFF] hover:bg-[#4A25CC] text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
-          style={{ fontFamily: 'Outfit, sans-serif' }}
-        >
-          Enviar código
-        </button>
+        <Aviso>{erro}</Aviso>
+
+        <BotaoPrimario carregando={enviando} textoCarregando="Enviando...">Enviar código</BotaoPrimario>
       </form>
 
       <p className="text-center text-sm text-gray-500 mt-8">

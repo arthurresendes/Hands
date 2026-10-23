@@ -1,3 +1,5 @@
+import re
+from bson import ObjectId
 from validate_docbr import CPF
 import httpx
 from core.security import gerar_senha_hash
@@ -55,31 +57,46 @@ async def validar_cpf(cpf_user):
     conversao = "".join([c for c in cpf_user if c.isdigit()])
     return cpf.validate(conversao)
 
-async def adicionar_cliente(nome: str, email: str,celular: str, idade: int, cep: str, cpf: str,informacoes: str,senha: str):
+def _variantes_cpf(cpf: str) -> list[str]:
+    digitos = re.sub(r'\D', '', cpf)
+    formatado = f'{digitos[:3]}.{digitos[3:6]}.{digitos[6:9]}-{digitos[9:]}'
+    return list({cpf.strip(), digitos, formatado})
+
+async def cpf_em_uso(colecao, cpf: str, ignorar_id: str | None = None) -> bool:
+    filtro = {'cpf': {'$in': _variantes_cpf(cpf)}}
+    if ignorar_id:
+        filtro['_id'] = {'$ne': ObjectId(ignorar_id)}
+    return await colecao.find_one(filtro, {'_id': 1}) is not None
+
+async def adicionar_cliente(nome: str, email: str,celular: str, idade: int, cep: str, cpf: str,informacoes: str,senha: str, aceite_termos: dict | None = None):
     validacao_cpf_cliente = await validar_cpf(cpf)
     if validacao_cpf_cliente != True:
         return {'Erro': 'CPF não validado, insira novamente.'}
+    if await cpf_em_uso(cliente_col, cpf):
+        return {'Erro': 'Já existe uma conta de cliente com este CPF.'}
     resultado_cep  = await pegar_dados_cep(cep)
     if "erro" in resultado_cep:
         return {"Erro": resultado_cep["erro"]}
     cliente_add = {'nome': nome, 'email': email,'celular': celular, 'idade': idade, 'endereco': [
                 {'cep': cep, 'rua': resultado_cep ['rua'], 'cidade': resultado_cep ['cidade'], 'estado': resultado_cep['estado'], 'latitude': resultado_cep['lat'], 'longitude': resultado_cep['lon']}
-            ], 'cpf': cpf, 'informacoes': informacoes, 'senha': gerar_senha_hash(senha), 'data_criacao': datetime.now()}
+            ], 'cpf': cpf, 'informacoes': informacoes, 'senha': gerar_senha_hash(senha), 'data_criacao': datetime.now(), 'aceite_termos': aceite_termos}
     insercao = await cliente_col.insert_one(cliente_add)
-    return {'Sucesso': f'Cliente adicionado com o id: {insercao.inserted_id}'}
+    return {'Sucesso': f'Cliente adicionado com o id: {insercao.inserted_id}', 'id': str(insercao.inserted_id)}
 
-async def adicionar_prestador(nome: str, email: str,celular: str, idade: int, cep: str, cpf: str,informacoes: str,valor: float, senha: str,servicos: list[str],idiomas: list[str],certificacoes: list[str] | None = None):
+async def adicionar_prestador(nome: str, email: str,celular: str, idade: int, cep: str, cpf: str,informacoes: str,valor: float, senha: str,servicos: list[str],idiomas: list[str],certificacoes: list[str] | None = None, aceite_termos: dict | None = None):
     validacao_cpf_prestador = await validar_cpf(cpf)
     if validacao_cpf_prestador != True:
         return {'Erro': 'CPF não validado, insira novamente.'}
+    if await cpf_em_uso(prestador_col, cpf):
+        return {'Erro': 'Já existe uma conta de prestador com este CPF.'}
     resultado_cep  = await pegar_dados_cep(cep)
     if "erro" in resultado_cep:
         return {"Erro": resultado_cep["erro"]}
     prestador_add = {'nome': nome, 'email': email, 'celular': celular, 'idade': idade, 'endereco': [
                 {'cep': cep, 'rua': resultado_cep ['rua'], 'cidade': resultado_cep ['cidade'], 'estado': resultado_cep['estado'], 'latitude': resultado_cep['lat'], 'longitude': resultado_cep['lon']}
-            ], 'cpf': cpf, 'informacoes': informacoes,'valor':valor,'servicos': servicos,'idiomas': idiomas ,'certificados': certificacoes,'senha': gerar_senha_hash(senha), 'data_criacao': datetime.now()}
+            ], 'cpf': cpf, 'informacoes': informacoes,'valor':valor,'servicos': servicos,'idiomas': idiomas ,'certificados': certificacoes,'senha': gerar_senha_hash(senha), 'data_criacao': datetime.now(), 'aceite_termos': aceite_termos}
     insercao = await prestador_col.insert_one(prestador_add)
-    return {'Sucesso': f'Prestador adicionado com o id: {insercao.inserted_id}'}
+    return {'Sucesso': f'Prestador adicionado com o id: {insercao.inserted_id}', 'id': str(insercao.inserted_id)}
 
 async def criar_index(collection_fun: str, indice: str):
     collection = db[collection_fun]

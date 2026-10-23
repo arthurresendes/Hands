@@ -1,42 +1,109 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import ClientLayout from '../components/ClientLayout'
+import Avatar from '../components/Avatar'
+import Aviso from '../components/Aviso'
+import Estrelas from '../components/Estrelas'
+import SeletorEstrelas from '../components/SeletorEstrelas'
 import { PinIcon, WhatsAppIcon, CheckIcon, CoinIcon, AwardIcon, HeartIcon, SendIcon } from '../components/icons'
-
-const reviews = [
-  { author: 'Beatriz Carvalho', rating: 5, text: 'Excelente profissional, super pontual e capricho no serviço. Recomendo muito!' },
-  { author: 'Eduardo Fonseca', rating: 5, text: 'Resolveu o problema rapidinho e o preço foi justo. Vou chamar de novo com certeza.' },
-  { author: 'Fernanda Lopes', rating: 4, text: 'Bom atendimento, chegou no horário combinado. Só achei o valor um pouco acima da média.' },
-]
-
-function Stars({ rating, size = 14 }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((s) => (
-        <svg key={s} width={size} height={size} viewBox="0 0 14 14" fill={s <= rating ? '#FFC857' : '#E5E7EB'}>
-          <path d="M7 1l1.545 3.13 3.455.502-2.5 2.437.59 3.437L7 8.885 3.91 10.506l.59-3.437L2 4.632l3.455-.502L7 1z" />
-        </svg>
-      ))}
-    </div>
-  )
-}
-
-function StarPicker() {
-  const [value, setValue] = useState(0)
-  return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((s) => (
-        <button key={s} type="button" onClick={() => setValue(s)} className="p-0.5">
-          <svg width="26" height="26" viewBox="0 0 14 14" fill={s <= value ? '#FFC857' : '#E5E7EB'}>
-            <path d="M7 1l1.545 3.13 3.455.502-2.5 2.437.59 3.437L7 8.885 3.91 10.506l.59-3.437L2 4.632l3.455-.502L7 1z" />
-          </svg>
-        </button>
-      ))}
-    </div>
-  )
-}
+import { buscarPrestador } from '../api/get/detalhe/detalhePrestador'
+import { favoritarPrestador } from '../api/post/cadastro/cadastroFavorito'
+import { desfavoritarPrestador } from '../api/delete/deletarFavorito'
+import { cadastroAvaliacaoPrestador } from '../api/post/cadastro/cadastroAvaliacaoPrestador'
+import { anoDe, formatarServicos, formatarValor, textoAvaliacoes } from '../utils/formatadores'
+import { linkWhatsApp } from '../utils/whatsapp'
 
 export default function ProfessionalProfile() {
-  const [favorited, setFavorited] = useState(false)
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [prestador, setPrestador] = useState(null)
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState('')
+  const [nota, setNota] = useState(0)
+  const [mensagem, setMensagem] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [aviso, setAviso] = useState(null)
+
+  const carregar = useCallback(async () => {
+    const dados = await buscarPrestador(id)
+    setPrestador(dados)
+    if (dados.minha_avaliacao) {
+      setNota(Math.round(dados.minha_avaliacao.nota))
+      setMensagem(dados.minha_avaliacao.mensagem)
+    }
+  }, [id])
+
+  useEffect(() => {
+    let ativo = true
+    setCarregando(true)
+    setErro('')
+    carregar()
+      .catch((error) => ativo && setErro(error.message))
+      .finally(() => ativo && setCarregando(false))
+    return () => {
+      ativo = false
+    }
+  }, [carregar])
+
+  const alternarFavorito = async () => {
+    const novo = !prestador.favorito
+    setPrestador((atual) => ({ ...atual, favorito: novo }))
+    try {
+      await (novo ? favoritarPrestador(prestador.email) : desfavoritarPrestador(prestador.email))
+    } catch (error) {
+      setPrestador((atual) => ({ ...atual, favorito: !novo }))
+      setAviso({ tipo: 'erro', texto: error.message })
+    }
+  }
+
+  const enviarAvaliacao = async () => {
+    setAviso(null)
+    if (!nota) {
+      setAviso({ tipo: 'erro', texto: 'Selecione uma nota de 1 a 5 estrelas.' })
+      return
+    }
+    setEnviando(true)
+    try {
+      await cadastroAvaliacaoPrestador({ para: prestador.email, nota, mensagem: mensagem.trim() })
+      await carregar()
+      setAviso({ tipo: 'sucesso', texto: 'Avaliação enviada com sucesso!' })
+    } catch (error) {
+      setAviso({ tipo: 'erro', texto: error.message })
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  if (carregando) {
+    return (
+      <ClientLayout>
+        <div className="bg-white rounded-2xl h-72 animate-pulse mb-6" />
+        <div className="bg-white rounded-2xl h-64 animate-pulse" />
+      </ClientLayout>
+    )
+  }
+
+  if (erro || !prestador) {
+    return (
+      <ClientLayout>
+        <div className="max-w-xl mx-auto text-center py-16">
+          <Aviso>{erro || 'Prestador não encontrado.'}</Aviso>
+          <button
+            onClick={() => navigate('/cliente/buscar')}
+            className="mt-6 bg-[#5B2EFF] hover:bg-[#4A25CC] text-white font-bold px-7 py-3.5 rounded-xl text-sm transition-colors"
+            style={{ fontFamily: 'Outfit, sans-serif' }}
+          >
+            Voltar para a busca
+          </button>
+        </div>
+      </ClientLayout>
+    )
+  }
+
+  const whatsapp = linkWhatsApp(prestador.celular, prestador.nome)
+  const desde = anoDe(prestador.cadastrado_em)
+  const temNota = prestador.nota_media !== null
+  const jaAvaliou = Boolean(prestador.minha_avaliacao)
 
   return (
     <ClientLayout>
@@ -45,51 +112,81 @@ export default function ProfessionalProfile() {
         <div className="px-8 pb-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12">
             <div className="flex items-end gap-5">
-              <div className="w-28 h-28 rounded-2xl bg-gray-300 border-4 border-white flex-shrink-0" />
+              <Avatar papel="prestador" id={prestador._id} className="w-28 h-28 rounded-2xl border-4 border-white flex-shrink-0">
+                <div className="w-28 h-28 rounded-2xl bg-gray-300 border-4 border-white flex-shrink-0" />
+              </Avatar>
               <div className="pb-1">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-black text-[#1F2937]" style={{ fontFamily: 'Outfit, sans-serif' }}>Marcos Silva</h1>
-                  <span className="inline-flex items-center gap-1 bg-[#5B2EFF]/10 text-[#5B2EFF] text-xs font-bold px-2.5 py-1 rounded-full">
-                    <CheckIcon />
-                    Verificado
-                  </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl font-black text-[#1F2937]" style={{ fontFamily: 'Outfit, sans-serif' }}>{prestador.nome}</h1>
+                  {temNota && prestador.nota_media >= 4.8 && (
+                    <span className="inline-flex items-center gap-1 bg-[#5B2EFF]/10 text-[#5B2EFF] text-xs font-bold px-2.5 py-1 rounded-full">
+                      <CheckIcon />
+                      Top Avaliado
+                    </span>
+                  )}
                 </div>
-                <p className="text-gray-500 text-sm mt-1">Eletricista Residencial</p>
+                <p className="text-gray-500 text-sm mt-1">{formatarServicos(prestador.servicos)}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setFavorited(!favorited)}
-                aria-label="Favoritar profissional"
-                className={`flex items-center justify-center w-12 h-12 rounded-xl border transition-colors ${favorited ? 'bg-red-50 border-red-200 text-red-500' : 'border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200'}`}
+                onClick={alternarFavorito}
+                aria-label={prestador.favorito ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                className={`flex items-center justify-center w-12 h-12 rounded-xl border transition-colors ${prestador.favorito ? 'bg-red-50 border-red-200 text-red-500' : 'border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200'}`}
               >
-                <HeartIcon width={20} height={20} fill={favorited ? 'currentColor' : 'none'} />
+                <HeartIcon width={20} height={20} fill={prestador.favorito ? 'currentColor' : 'none'} />
               </button>
-              <button className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1fb855] text-white font-bold px-6 py-3 rounded-xl text-sm" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                <WhatsAppIcon width={18} height={18} />
-                Chamar no WhatsApp
-              </button>
+              {whatsapp ? (
+                <a
+                  href={whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 bg-[#25D366] hover:bg-[#1fb855] text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors"
+                  style={{ fontFamily: 'Outfit, sans-serif' }}
+                >
+                  <WhatsAppIcon width={18} height={18} />
+                  Chamar no WhatsApp
+                </a>
+              ) : (
+                <span
+                  aria-disabled="true"
+                  title="Este profissional não informou um celular válido"
+                  className="flex items-center gap-2 bg-[#25D366] text-white font-bold px-6 py-3 rounded-xl text-sm opacity-50 cursor-not-allowed"
+                  style={{ fontFamily: 'Outfit, sans-serif' }}
+                >
+                  <WhatsAppIcon width={18} height={18} />
+                  WhatsApp indisponível
+                </span>
+              )}
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-6 mt-6 pt-6 border-t border-gray-100">
             <div className="flex items-center gap-2">
-              <Stars rating={5} size={16} />
-              <span className="font-bold text-[#1F2937]">4.9</span>
-              <span className="text-sm text-gray-400">(142 avaliações)</span>
+              {temNota ? (
+                <>
+                  <Estrelas nota={prestador.nota_media} tamanho={16} />
+                  <span className="font-bold text-[#1F2937]">{prestador.nota_media.toFixed(1)}</span>
+                  <span className="text-sm text-gray-400">({textoAvaliacoes(prestador.total_avaliacoes)})</span>
+                </>
+              ) : (
+                <span className="text-sm text-gray-400">Ainda sem avaliações</span>
+              )}
             </div>
             <div className="flex items-center gap-1.5 text-sm text-gray-500">
               <PinIcon width={16} height={16} />
-              São Paulo, SP
+              {prestador.cidade ?? 'Localização não informada'}
             </div>
             <div className="flex items-center gap-1.5 text-sm text-gray-500">
               <CoinIcon width={16} height={16} />
-              A partir de R$ 80
+              {formatarValor(prestador.valor)}
             </div>
-            <div className="flex items-center gap-1.5 text-sm text-gray-500">
-              <AwardIcon width={16} height={16} />
-              Prestador desde 2024
-            </div>
+            {desde && (
+              <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                <AwardIcon width={16} height={16} />
+                Prestador desde {desde}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -98,45 +195,62 @@ export default function ProfessionalProfile() {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <h2 className="font-bold text-[#1F2937] mb-3" style={{ fontFamily: 'Outfit, sans-serif' }}>Sobre</h2>
-            <p className="text-sm text-gray-500 leading-relaxed">
-              Eletricista com mais de 10 anos de experiência em instalações residenciais, manutenção
-              preventiva e corretiva, troca de quadros de energia e certificação de instalações. Atendo
-              toda a região de São Paulo com agilidade e garantia de serviço.
+            <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-line">
+              {prestador.informacoes || 'Este profissional ainda não adicionou uma descrição.'}
             </p>
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="font-bold text-[#1F2937] mb-1" style={{ fontFamily: 'Outfit, sans-serif' }}>Avaliar este profissional</h2>
-            <p className="text-sm text-gray-400 mb-5">Já contratou? Conte como foi sua experiência</p>
+            <h2 className="font-bold text-[#1F2937] mb-1" style={{ fontFamily: 'Outfit, sans-serif' }}>
+              {jaAvaliou ? 'Sua avaliação' : 'Avaliar este profissional'}
+            </h2>
+            <p className="text-sm text-gray-400 mb-5">
+              {jaAvaliou ? 'Você pode atualizar sua avaliação quando quiser' : 'Já contratou? Conte como foi sua experiência'}
+            </p>
 
             <div className="flex flex-col items-center py-6 mb-5 bg-[#F8F6FF] rounded-2xl">
-              <StarPicker />
+              <SeletorEstrelas valor={nota} onChange={setNota} />
               <p className="text-sm text-gray-400 mt-3">Toque nas estrelas para avaliar</p>
             </div>
 
             <textarea
-              readOnly
+              value={mensagem}
+              onChange={(e) => setMensagem(e.target.value)}
+              maxLength={1000}
               rows={3}
               placeholder="Como foi o atendimento desse profissional?"
               className="w-full px-4 py-3.5 border border-gray-200 rounded-xl outline-none text-sm placeholder-gray-400 resize-none focus:border-[#5B2EFF] transition-colors mb-4"
             />
 
-            <button className="flex items-center gap-2 bg-[#5B2EFF] hover:bg-[#4A25CC] text-white font-bold px-7 py-3.5 rounded-xl text-sm transition-colors" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            {aviso && <div className="mb-4"><Aviso tipo={aviso.tipo}>{aviso.texto}</Aviso></div>}
+
+            <button
+              onClick={enviarAvaliacao}
+              disabled={enviando}
+              className="flex items-center gap-2 bg-[#5B2EFF] hover:bg-[#4A25CC] disabled:opacity-60 text-white font-bold px-7 py-3.5 rounded-xl text-sm transition-colors"
+              style={{ fontFamily: 'Outfit, sans-serif' }}
+            >
               <SendIcon width={16} height={16} />
-              Enviar avaliação
+              {enviando ? 'Enviando...' : jaAvaliou ? 'Atualizar avaliação' : 'Enviar avaliação'}
             </button>
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <h2 className="font-bold text-[#1F2937] mb-5" style={{ fontFamily: 'Outfit, sans-serif' }}>Avaliações de clientes</h2>
+            {prestador.avaliacoes.length === 0 && (
+              <p className="text-sm text-gray-400">Este profissional ainda não recebeu avaliações.</p>
+            )}
             <div className="space-y-5">
-              {reviews.map((r) => (
-                <div key={r.author} className="pb-5 border-b border-gray-100 last:border-0 last:pb-0">
+              {prestador.avaliacoes.map((r) => (
+                <div key={r._id} className="pb-5 border-b border-gray-100 last:border-0 last:pb-0">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-semibold text-[#1F2937]">{r.author}</p>
-                    <Stars rating={r.rating} />
+                    <p className="text-sm font-semibold text-[#1F2937]">
+                      {r.autor}
+                      {r.minha && <span className="ml-2 text-xs font-bold text-[#5B2EFF] bg-[#5B2EFF]/10 px-2 py-0.5 rounded-full">Você</span>}
+                    </p>
+                    <Estrelas nota={r.nota} />
                   </div>
-                  <p className="text-sm text-gray-500 leading-relaxed">{r.text}</p>
+                  {r.mensagem && <p className="text-sm text-gray-500 leading-relaxed">{r.mensagem}</p>}
                 </div>
               ))}
             </div>
@@ -144,24 +258,36 @@ export default function ProfessionalProfile() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="font-bold text-[#1F2937] mb-4" style={{ fontFamily: 'Outfit, sans-serif' }}>Formas de pagamento</h2>
-            <div className="flex flex-wrap gap-2">
-              {['Pix', 'Dinheiro', 'Cartão de Débito', 'Cartão de Crédito'].map((f) => (
-                <span key={f} className="text-xs font-semibold bg-[#F8F6FF] text-[#5B2EFF] px-3 py-1.5 rounded-full">{f}</span>
-              ))}
+          {prestador.idiomas.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+              <h2 className="font-bold text-[#1F2937] mb-4" style={{ fontFamily: 'Outfit, sans-serif' }}>Idiomas</h2>
+              <div className="flex flex-wrap gap-2">
+                {prestador.idiomas.map((idioma) => (
+                  <span key={idioma} className="text-xs font-semibold bg-[#F8F6FF] text-[#5B2EFF] px-3 py-1.5 rounded-full">{idioma}</span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+          {prestador.certificados.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+              <h2 className="font-bold text-[#1F2937] mb-4" style={{ fontFamily: 'Outfit, sans-serif' }}>Certificados</h2>
+              <div className="space-y-2">
+                {prestador.certificados.map((c) => (
+                  <div key={c} className="flex items-center gap-2 text-sm text-gray-500">
+                    <span className="w-5 h-5 rounded-full bg-[#5B2EFF]/10 flex items-center justify-center text-[#5B2EFF] flex-shrink-0">
+                      <CheckIcon width={10} height={10} />
+                    </span>
+                    {c}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="font-bold text-[#1F2937] mb-4" style={{ fontFamily: 'Outfit, sans-serif' }}>Certificados</h2>
-            <div className="space-y-2">
-              {['NR-10 Segurança em Eletricidade', 'Curso Técnico em Eletrotécnica'].map((c) => (
-                <div key={c} className="flex items-center gap-2 text-sm text-gray-500">
-                  <span className="w-5 h-5 rounded-full bg-[#5B2EFF]/10 flex items-center justify-center text-[#5B2EFF] flex-shrink-0">
-                    <CheckIcon width={10} height={10} />
-                  </span>
-                  {c}
-                </div>
+            <h2 className="font-bold text-[#1F2937] mb-4" style={{ fontFamily: 'Outfit, sans-serif' }}>Serviços oferecidos</h2>
+            <div className="flex flex-wrap gap-2">
+              {prestador.servicos.map((servico) => (
+                <span key={servico} className="text-xs font-semibold bg-[#F8F6FF] text-[#5B2EFF] px-3 py-1.5 rounded-full">{servico}</span>
               ))}
             </div>
           </div>

@@ -3,3 +3,5 @@ __pycache__/
 .env
 .venv
 venv
+app/src/fotos/*/*
+!app/src/fotos/*/.gitkeep

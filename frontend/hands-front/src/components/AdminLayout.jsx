@@ -1,17 +1,26 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Logo from './Logo'
-import { GridIcon, UsersIcon, BriefcaseIcon, StarOutlineIcon, MenuIcon, CloseIcon, LogoutIcon, ShieldLockIcon } from './icons'
+import useAuth from '../hooks/useAuth'
+import { rotaAtiva } from '../utils/navegacao'
+import { GridIcon, UsersIcon, BriefcaseIcon, StarOutlineIcon, FlagIcon, MenuIcon, CloseIcon, LogoutIcon, ShieldLockIcon } from './icons'
 
 const navLinks = [
   { label: 'Dashboard', path: '/admin/painel', Icon: GridIcon },
   { label: 'Clientes', path: '/admin/clientes', Icon: UsersIcon },
   { label: 'Prestadores', path: '/admin/prestadores', Icon: BriefcaseIcon },
   { label: 'Avaliações do Hands', path: '/admin/avaliacoes', Icon: StarOutlineIcon },
+  { label: 'Moderação', path: '/admin/moderacao', Icon: FlagIcon },
 ]
 
 export default function AdminLayout({ title, subtitle, children }) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const { usuario, logout } = useAuth()
+  const sair = async () => {
+    await logout()
+    navigate('/')
+  }
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
@@ -26,7 +35,8 @@ export default function AdminLayout({ title, subtitle, children }) {
             <button
               key={l.path}
               onClick={() => navigate(l.path)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              aria-current={rotaAtiva(pathname, l) ? 'page' : undefined}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${rotaAtiva(pathname, l) ? 'bg-[#FFC857]/15 text-[#FFC857]' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
             >
               <l.Icon width={16} height={16} />
               {l.label}
@@ -40,12 +50,12 @@ export default function AdminLayout({ title, subtitle, children }) {
               <ShieldLockIcon width={16} height={16} />
             </span>
             <div>
-              <p className="text-sm font-semibold text-white">Administrador</p>
+              <p className="text-sm font-semibold text-white">{usuario?.nome ?? 'Administrador'}</p>
               <p className="text-xs text-white/40">Acesso restrito</p>
             </div>
           </div>
           <button
-            onClick={() => navigate('/')}
+            onClick={sair}
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors"
           >
             <LogoutIcon width={16} height={16} />
@@ -68,14 +78,15 @@ export default function AdminLayout({ title, subtitle, children }) {
               <button
                 key={l.path}
                 onClick={() => { navigate(l.path); setMobileOpen(false) }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/70 text-left"
+                aria-current={rotaAtiva(pathname, l) ? 'page' : undefined}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-left ${rotaAtiva(pathname, l) ? 'bg-[#FFC857]/15 text-[#FFC857]' : 'text-white/70'}`}
               >
                 <l.Icon width={16} height={16} />
                 {l.label}
               </button>
             ))}
             <button
-              onClick={() => navigate('/')}
+              onClick={sair}
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-400 text-left"
             >
               <LogoutIcon width={16} height={16} />
@@ -84,7 +95,7 @@ export default function AdminLayout({ title, subtitle, children }) {
           </div>
         )}
 
-        <main className="max-w-7xl mx-auto px-6 py-10">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
           {(title || subtitle) && (
             <div className="mb-8">
               {title && (

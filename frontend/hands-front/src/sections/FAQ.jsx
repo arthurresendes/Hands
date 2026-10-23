@@ -32,7 +32,7 @@ export default function FAQ() {
       <div className="max-w-3xl mx-auto px-6">
         <div className="text-center mb-14">
           <span className="text-xs font-bold tracking-widest uppercase text-[#5B2EFF] mb-3 block">Dúvidas Frequentes</span>
-          <h2 className="text-4xl font-black text-[#1F2937]" style={{ fontFamily: 'Outfit, sans-serif' }}>Perguntas Frequentes</h2>
+          <h2 className="text-3xl sm:text-4xl font-black text-[#1F2937]" style={{ fontFamily: 'Outfit, sans-serif' }}>Perguntas Frequentes</h2>
         </div>
 
         <div className="space-y-3">

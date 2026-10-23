@@ -1,10 +1,121 @@
+import { mensagemIdade, propsCampoIdade } from '../utils/validacoes'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ProviderLayout from '../components/ProviderLayout'
 import FormField from '../components/FormField'
-import { UserIcon, MailIcon, IdCardIcon, LockIcon, PinIcon, BriefcaseIcon, CoinIcon, EditIcon } from '../components/icons'
+import FotoPerfilEditavel from '../components/FotoPerfilEditavel'
+import AlterarSenha from '../components/AlterarSenha'
+import ExcluirConta from '../components/ExcluirConta'
+import Aviso from '../components/Aviso'
+import useAuth from '../hooks/useAuth'
+import usePerfil from '../hooks/usePerfil'
+import { UserIcon, MailIcon, IdCardIcon, PinIcon, ChatIcon, CoinIcon } from '../components/icons'
+import { atualizarDadosPrestador } from '../api/patch/atualizar/atualizarDadosPrestador'
+import { deletarPrestador } from '../api/delete/deletarPrestador'
+import { SERVICOS } from '../utils/servicos'
+import { anoDe, converterValor, formatarMoeda } from '../utils/formatadores'
 
-const servicos = ['Eletricista', 'Encanador', 'Pintor', 'Diarista', 'Pedreiro', 'Jardineiro', 'Técnico de TI', 'Montador de Móveis']
+const soDigitos = (texto) => (texto ?? '').replace(/\D/g, '')
+const separar = (texto, divisor) => texto.split(divisor).map((item) => item.trim()).filter(Boolean)
+
+const FORM_INICIAL = {
+  nome: '',
+  celular: '',
+  idade: '',
+  cep: '',
+  informacoes: '',
+  servicos: [],
+  valor: '',
+  idiomas: '',
+  certificacoes: '',
+}
 
 export default function ProviderProfile() {
+  const navigate = useNavigate()
+  const { usuario, recarregar, logout } = useAuth()
+  const { perfil, carregando, erro: erroPerfil, recarregar: recarregarPerfil } = usePerfil()
+  const [form, setForm] = useState(FORM_INICIAL)
+  const [avisoDados, setAvisoDados] = useState(null)
+  const [avisoGeral, setAvisoGeral] = useState(null)
+  const [salvando, setSalvando] = useState(false)
+
+  useEffect(() => {
+    if (!perfil) return
+    setForm({
+      nome: perfil.nome ?? '',
+      celular: perfil.celular ?? '',
+      idade: perfil.idade ?? '',
+      cep: perfil.cep ?? '',
+      informacoes: perfil.informacoes ?? '',
+      servicos: perfil.servicos ?? [],
+      valor: formatarMoeda(perfil.valor),
+      idiomas: (perfil.idiomas ?? []).join(', '),
+      certificacoes: (perfil.certificados ?? []).join('\n'),
+    })
+  }, [perfil])
+
+  const alterar = (e) => setForm((atual) => ({ ...atual, [e.target.name]: e.target.value }))
+
+  const alternarServico = (servico) =>
+    setForm((atual) => ({
+      ...atual,
+      servicos: atual.servicos.includes(servico)
+        ? atual.servicos.filter((s) => s !== servico)
+        : [...atual.servicos, servico],
+    }))
+
+  const salvarDados = async (e) => {
+    e.preventDefault()
+    setAvisoDados(null)
+    const erroIdade = mensagemIdade(form.idade)
+    if (erroIdade) {
+      setAvisoDados({ tipo: 'erro', texto: erroIdade })
+      return
+    }
+    if (form.servicos.length === 0) {
+      setAvisoDados({ tipo: 'erro', texto: 'Selecione ao menos um serviço.' })
+      return
+    }
+    const valor = converterValor(form.valor)
+    if (Number.isNaN(valor) || valor < 0) {
+      setAvisoDados({ tipo: 'erro', texto: 'Informe um valor válido.' })
+      return
+    }
+    setSalvando(true)
+    try {
+      const alteracoes = {
+        id: usuario.id,
+        nome: form.nome.trim(),
+        celular: form.celular.trim(),
+        idade: Number(form.idade),
+        informacoes: form.informacoes.trim(),
+        servicos: form.servicos,
+        valor,
+        idiomas: separar(form.idiomas, ','),
+        certificacoes: separar(form.certificacoes, '\n'),
+      }
+      if (soDigitos(form.cep) !== soDigitos(perfil.cep)) alteracoes.cep = form.cep.trim()
+      await atualizarDadosPrestador(alteracoes)
+      await Promise.all([recarregarPerfil(), recarregar()])
+      setAvisoDados({ tipo: 'sucesso', texto: 'Dados atualizados com sucesso.' })
+    } catch (error) {
+      setAvisoDados({ tipo: 'erro', texto: error.message })
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const trocarSenha = (senhaAtual, novaSenha) =>
+    atualizarDadosPrestador({ id: usuario.id, senha: novaSenha, senha_atual: senhaAtual })
+
+  const excluirConta = async () => {
+    await deletarPrestador(perfil.email)
+    await logout()
+    navigate('/')
+  }
+
+  const desde = anoDe(perfil?.cadastrado_em)
+
   return (
     <ProviderLayout>
       <div className="mb-8">
@@ -14,97 +125,130 @@ export default function ProviderProfile() {
         <p className="text-gray-500 mt-1">Gerencie seu perfil profissional e seus dados</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 h-fit">
-          <div className="flex flex-col items-center text-center">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-[#FFC857]/15 flex items-center justify-center" style={{ color: '#B8860B' }}>
-                <UserIcon width={32} height={32} />
+      {(avisoGeral || erroPerfil) && <div className="mb-6"><Aviso tipo={avisoGeral?.tipo}>{avisoGeral?.texto ?? erroPerfil}</Aviso></div>}
+
+      {carregando && !perfil && <div className="bg-white rounded-2xl h-96 animate-pulse" />}
+
+      {perfil && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 h-fit">
+            <div className="flex flex-col items-center text-center">
+              <FotoPerfilEditavel papel="prestador" id={perfil.id} onErro={(texto) => setAvisoGeral({ tipo: 'erro', texto })}>
+                <div className="w-24 h-24 rounded-full bg-[#FFC857]/15 flex items-center justify-center" style={{ color: '#B8860B' }}>
+                  <UserIcon width={32} height={32} />
+                </div>
+              </FotoPerfilEditavel>
+              <h2 className="font-bold text-[#1F2937] mt-4" style={{ fontFamily: 'Outfit, sans-serif' }}>{perfil.nome}</h2>
+              <p className="text-sm text-gray-400">{desde ? `Prestador desde ${desde}` : 'Prestador Hands'}</p>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-gray-100 space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Avaliação média</span>
+                <span className="font-semibold text-[#1F2937]">{perfil.nota_media !== null ? perfil.nota_media.toFixed(1) : '—'}</span>
               </div>
-              <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#5B2EFF] text-white flex items-center justify-center border-2 border-white">
-                <EditIcon width={13} height={13} />
-              </button>
-            </div>
-            <h2 className="font-bold text-[#1F2937] mt-4" style={{ fontFamily: 'Outfit, sans-serif' }}>Marcos Silva</h2>
-            <p className="text-sm text-gray-400">Eletricista Residencial</p>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-gray-100 space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Serviços realizados</span>
-              <span className="font-semibold text-[#1F2937]">142</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Avaliação média</span>
-              <span className="font-semibold text-[#1F2937]">4.9</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="font-bold text-[#1F2937] mb-5" style={{ fontFamily: 'Outfit, sans-serif' }}>Dados pessoais</h2>
-            <div className="space-y-5">
-              <FormField label="Nome completo" placeholder="Marcos Silva" Icon={UserIcon} />
-              <FormField label="E-mail" type="email" placeholder="marcos.silva@exemplo.com" Icon={MailIcon} />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="CPF" placeholder="000.000.000-00" Icon={IdCardIcon} />
-                <FormField label="Idade" type="number" placeholder="34" />
+              <div className="flex justify-between">
+                <span className="text-gray-400">Avaliações recebidas</span>
+                <span className="font-semibold text-[#1F2937]">{perfil.total_avaliacoes}</span>
               </div>
-              <FormField label="CEP" placeholder="00000-000" Icon={PinIcon} />
-              <button className="bg-[#5B2EFF] hover:bg-[#4A25CC] text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                Salvar alterações
-              </button>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Favoritado por</span>
+                <span className="font-semibold text-[#1F2937]">{perfil.total_favoritos}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Avaliações feitas</span>
+                <span className="font-semibold text-[#1F2937]">{perfil.total_avaliacoes_feitas}</span>
+              </div>
+              {perfil.cidade && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Cidade</span>
+                  <span className="font-semibold text-[#1F2937]">{perfil.cidade}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="font-bold text-[#1F2937] mb-5" style={{ fontFamily: 'Outfit, sans-serif' }}>Dados profissionais</h2>
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-semibold text-[#1F2937] mb-2">Serviço oferecido</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                    <BriefcaseIcon />
-                  </span>
-                  <select disabled className="w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-xl outline-none text-sm text-gray-400 appearance-none">
-                    <option>Eletricista</option>
-                    {servicos.map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
-                  </select>
+          <div className="lg:col-span-2 space-y-6">
+            <form onSubmit={salvarDados} className="space-y-6">
+              <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                <h2 className="font-bold text-[#1F2937] mb-5" style={{ fontFamily: 'Outfit, sans-serif' }}>Dados pessoais</h2>
+                <div className="space-y-5">
+                  <FormField label="Nome completo" Icon={UserIcon} name="nome" value={form.nome} onChange={alterar} />
+                  <FormField label="E-mail" type="email" Icon={MailIcon} value={perfil.email ?? ''} disabled required={false} readOnly />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField label="CPF" Icon={IdCardIcon} value={perfil.cpf_mascarado ?? ''} disabled required={false} readOnly />
+                    <FormField label="Idade" type="number" {...propsCampoIdade} name="idade" value={form.idade} onChange={alterar} />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField label="CEP" placeholder="00000-000" Icon={PinIcon} name="cep" value={form.cep} onChange={alterar} />
+                    <FormField label="Celular" type="tel" placeholder="(11) 90000-0000" Icon={ChatIcon} name="celular" value={form.celular} onChange={alterar} />
+                  </div>
                 </div>
               </div>
-              <FormField label="Valor médio do serviço" placeholder="R$ 80,00" Icon={CoinIcon} />
-              <button className="bg-[#5B2EFF] hover:bg-[#4A25CC] text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                Salvar alterações
-              </button>
-            </div>
-          </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="font-bold text-[#1F2937] mb-5" style={{ fontFamily: 'Outfit, sans-serif' }}>Alterar senha</h2>
-            <div className="space-y-5">
-              <FormField label="Senha atual" type="password" placeholder="Digite sua senha atual" Icon={LockIcon} />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField label="Nova senha" type="password" placeholder="Nova senha" Icon={LockIcon} />
-                <FormField label="Confirmar nova senha" type="password" placeholder="Repita a nova senha" Icon={LockIcon} />
+              <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                <h2 className="font-bold text-[#1F2937] mb-5" style={{ fontFamily: 'Outfit, sans-serif' }}>Dados profissionais</h2>
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#1F2937] mb-2">Serviços oferecidos</label>
+                    <div className="flex flex-wrap gap-2">
+                      {SERVICOS.map((servico) => {
+                        const ativo = form.servicos.includes(servico)
+                        return (
+                          <button
+                            key={servico}
+                            type="button"
+                            onClick={() => alternarServico(servico)}
+                            aria-pressed={ativo}
+                            className={`text-sm font-semibold px-4 py-2 rounded-full border transition-colors ${ativo ? 'bg-[#5B2EFF] border-[#5B2EFF] text-white' : 'border-gray-200 text-gray-500 hover:border-[#5B2EFF]/40'}`}
+                          >
+                            {servico}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <FormField label="Valor médio do serviço" placeholder="R$ 80,00" Icon={CoinIcon} name="valor" value={form.valor} onChange={alterar} />
+                  <FormField label="Idiomas (separados por vírgula)" placeholder="Português, Inglês" name="idiomas" value={form.idiomas} onChange={alterar} required={false} />
+                  <div>
+                    <label className="block text-sm font-semibold text-[#1F2937] mb-2">Certificações (uma por linha)</label>
+                    <textarea
+                      name="certificacoes"
+                      value={form.certificacoes}
+                      onChange={alterar}
+                      rows={3}
+                      className="w-full px-4 py-3.5 border border-gray-200 rounded-xl outline-none text-sm placeholder-gray-400 focus:border-[#5B2EFF] transition-colors resize-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#1F2937] mb-2">Sobre você</label>
+                    <textarea
+                      name="informacoes"
+                      value={form.informacoes}
+                      onChange={alterar}
+                      rows={4}
+                      className="w-full px-4 py-3.5 border border-gray-200 rounded-xl outline-none text-sm placeholder-gray-400 focus:border-[#5B2EFF] transition-colors resize-none"
+                    />
+                  </div>
+                  {avisoDados && <Aviso tipo={avisoDados.tipo}>{avisoDados.texto}</Aviso>}
+                  <button
+                    type="submit"
+                    disabled={salvando}
+                    className="bg-[#5B2EFF] hover:bg-[#4A25CC] disabled:opacity-60 text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors"
+                    style={{ fontFamily: 'Outfit, sans-serif' }}
+                  >
+                    {salvando ? 'Salvando...' : 'Salvar alterações'}
+                  </button>
+                </div>
               </div>
-              <button className="bg-[#1F2937] hover:bg-black text-white font-bold px-6 py-3 rounded-xl text-sm transition-colors" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                Atualizar senha
-              </button>
-            </div>
-          </div>
+            </form>
 
-          <div className="bg-white rounded-2xl border border-red-100 p-6">
-            <h2 className="font-bold text-red-500 mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>Excluir conta</h2>
-            <p className="text-sm text-gray-500 mb-4">Essa ação é permanente e removerá todos os seus dados da plataforma.</p>
-            <button className="border border-red-200 text-red-500 font-semibold px-6 py-3 rounded-xl text-sm hover:bg-red-50 transition-colors">
-              Excluir minha conta
-            </button>
+            <AlterarSenha onAlterar={trocarSenha} />
+
+            <ExcluirConta onExcluir={excluirConta} />
           </div>
         </div>
-      </div>
+      )}
     </ProviderLayout>
   )
 }

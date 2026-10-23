@@ -6,7 +6,7 @@ export default function BottomCTA() {
   return (
     <section className="py-20" style={{ background: 'linear-gradient(135deg, #4A25CC 0%, #5B2EFF 45%, #7C5CFC 100%)' }}>
       <div className="max-w-3xl mx-auto px-6 text-center">
-        <h2 className="text-4xl font-black text-white mb-5 leading-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
+        <h2 className="text-3xl sm:text-4xl font-black text-white mb-5 leading-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
           Pronto para resolver o seu problema?
         </h2>
         <p className="text-white/80 mb-10">
