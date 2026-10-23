@@ -27,12 +27,14 @@ import ForgotPasswordEmail from './pages/ForgotPasswordEmail'
 import ForgotPasswordCode from './pages/ForgotPasswordCode'
 import ForgotPasswordReset from './pages/ForgotPasswordReset'
 import NotFound from './pages/NotFound'
+import RolarParaTopo from './components/RolarParaTopo'
 
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+      <RolarParaTopo />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<LoginClient />} />

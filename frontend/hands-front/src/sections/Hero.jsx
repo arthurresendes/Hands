@@ -40,23 +40,6 @@ export default function Hero() {
           forma rápida, segura e sem custo.
         </p>
 
-        <div className="bg-white rounded-2xl p-2 flex flex-col sm:flex-row gap-2 shadow-2xl shadow-black/30 max-w-2xl mx-auto">
-          <input
-            placeholder="Qual serviço você precisa?"
-            readOnly
-            className="flex-1 px-4 py-3.5 text-gray-800 rounded-xl outline-none text-sm placeholder-gray-400"
-          />
-          <div className="hidden sm:block w-px bg-gray-200 my-2" />
-          <input
-            placeholder="Digite seu CEP"
-            readOnly
-            className="w-full sm:w-44 px-4 py-3.5 text-gray-800 rounded-xl outline-none text-sm placeholder-gray-400"
-          />
-          <button className="bg-[#5B2EFF] text-white font-bold px-8 py-3.5 rounded-xl text-sm whitespace-nowrap" style={{ fontFamily: 'Outfit, sans-serif' }}>
-            Buscar
-          </button>
-        </div>
-
         <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 mt-10 text-sm">
           <div className="flex items-center gap-2">
             <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
