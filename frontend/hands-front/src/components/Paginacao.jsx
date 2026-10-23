@@ -5,11 +5,11 @@ export default function Paginacao({ resultado, rotulo, onMudar }) {
   const fim = Math.min(pagina * limite, total)
 
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-4 border-t border-gray-100">
       <p className="text-xs text-gray-400">
         {total === 0 ? `Nenhum ${rotulo.singular} encontrado` : `Mostrando ${inicio}–${fim} de ${total.toLocaleString('pt-BR')} ${total === 1 ? rotulo.singular : rotulo.plural}`}
       </p>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-gray-400 mr-1">Página {pagina} de {totalPaginas}</span>
         <button
           onClick={() => onMudar(pagina - 1)}

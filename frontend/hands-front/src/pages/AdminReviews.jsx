@@ -117,7 +117,7 @@ export default function AdminReviews() {
         <button type="submit" className="bg-[#5B2EFF] hover:bg-[#4A25CC] text-white font-bold px-6 py-3 rounded-xl text-sm" style={{ fontFamily: 'Outfit, sans-serif' }}>
           Buscar
         </button>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {ABAS.map((a) => (
             <button
               key={a.rotulo}

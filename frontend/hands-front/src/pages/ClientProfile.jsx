@@ -127,11 +127,11 @@ export default function ClientProfile() {
               <div className="space-y-5">
                 <FormField label="Nome completo" Icon={UserIcon} name="nome" value={form.nome} onChange={alterar} />
                 <FormField label="E-mail" type="email" Icon={MailIcon} value={perfil.email ?? ''} disabled required={false} readOnly />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField label="CPF" Icon={IdCardIcon} value={perfil.cpf_mascarado ?? ''} disabled required={false} readOnly />
                   <FormField label="Idade" type="number" {...propsCampoIdade} name="idade" value={form.idade} onChange={alterar} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField label="CEP" placeholder="00000-000" Icon={PinIcon} name="cep" value={form.cep} onChange={alterar} />
                   <FormField label="Celular" type="tel" placeholder="(11) 90000-0000" Icon={ChatIcon} name="celular" value={form.celular} onChange={alterar} />
                 </div>

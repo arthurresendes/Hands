@@ -99,12 +99,12 @@ export default function RegisterProvider() {
         <FormField label="Nome completo" placeholder="Digite seu nome completo" Icon={UserIcon} name="nome" value={form.nome} onChange={alterar} />
         <FormField label="E-mail" type="email" placeholder="seuemail@exemplo.com" Icon={MailIcon} name="email" autoComplete="email" value={form.email} onChange={alterar} />
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label="CPF" placeholder="000.000.000-00" Icon={IdCardIcon} name="cpf" value={form.cpf} onChange={alterar} />
           <FormField label="Idade" type="number" {...propsCampoIdade} placeholder="Ex: 32" name="idade" value={form.idade} onChange={alterar} />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label="CEP" placeholder="00000-000" Icon={PinIcon} name="cep" value={form.cep} onChange={alterar} />
           <FormField label="Celular" type="tel" placeholder="(11) 90000-0000" Icon={ChatIcon} name="celular" autoComplete="tel" value={form.celular} onChange={alterar} />
         </div>
@@ -145,7 +145,7 @@ export default function RegisterProvider() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label="Senha" type="password" placeholder="Mínimo de 6 caracteres" Icon={LockIcon} name="senha" autoComplete="new-password" minLength={6} value={form.senha} onChange={alterar} />
           <FormField label="Confirmar senha" type="password" placeholder="Repita a senha" Icon={LockIcon} name="confirmar" autoComplete="new-password" value={form.confirmar} onChange={alterar} />
         </div>

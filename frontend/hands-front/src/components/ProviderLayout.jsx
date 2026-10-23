@@ -114,7 +114,7 @@ export default function ProviderLayout({ children }) {
         )}
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-10">{children}</main>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">{children}</main>
     </div>
   )
 }

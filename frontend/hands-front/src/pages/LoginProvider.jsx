@@ -56,7 +56,7 @@ export default function LoginProvider() {
         <FormField label="E-mail" type="email" placeholder="seuemail@exemplo.com" Icon={MailIcon} name="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <FormField label="Senha" type="password" placeholder="Digite sua senha" Icon={LockIcon} name="senha" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
 
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
           <label className="flex items-center gap-2 text-gray-500">
             <input type="checkbox" checked={lembrar} onChange={(e) => setLembrar(e.target.checked)} className="rounded border-gray-300" />
             Lembrar de mim

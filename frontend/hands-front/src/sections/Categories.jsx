@@ -32,7 +32,7 @@ export default function Categories() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
           <span className="text-xs font-bold tracking-widest uppercase text-[#5B2EFF] mb-3 block">Explore</span>
-          <h2 className="text-4xl font-black text-[#1F2937] mb-3" style={{ fontFamily: 'Outfit, sans-serif' }}>Explore por áreas</h2>
+          <h2 className="text-3xl sm:text-4xl font-black text-[#1F2937] mb-3" style={{ fontFamily: 'Outfit, sans-serif' }}>Explore por áreas</h2>
           <p className="text-gray-500">As categorias mais buscadas do Hands</p>
         </div>
 

@@ -36,7 +36,7 @@ export default function AlterarSenha({ onAlterar }) {
       <h2 className="font-bold text-[#1F2937] mb-5" style={{ fontFamily: 'Outfit, sans-serif' }}>Alterar senha</h2>
       <div className="space-y-5">
         <FormField label="Senha atual" type="password" placeholder="Digite sua senha atual" Icon={LockIcon} name="senha_atual" autoComplete="current-password" value={senhas.senha_atual} onChange={alterar} />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label="Nova senha" type="password" placeholder="Mínimo de 6 caracteres" Icon={LockIcon} name="senha" autoComplete="new-password" minLength={6} value={senhas.senha} onChange={alterar} />
           <FormField label="Confirmar nova senha" type="password" placeholder="Repita a nova senha" Icon={LockIcon} name="confirmar" autoComplete="new-password" value={senhas.confirmar} onChange={alterar} />
         </div>

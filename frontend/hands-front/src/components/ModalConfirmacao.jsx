@@ -12,11 +12,11 @@ export default function ModalConfirmacao({ aberto, titulo, texto, confirmar = 'C
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => !carregando && onCancelar()}>
-      <div role="dialog" aria-modal="true" aria-labelledby="titulo-modal" className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="titulo-modal" className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h2 id="titulo-modal" className="font-bold text-lg text-[#1F2937] mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>{titulo}</h2>
         <p className="text-sm text-gray-500 leading-relaxed">{texto}</p>
         {erro && <p className="text-sm text-red-500 mt-3">{erro}</p>}
-        <div className="flex justify-end gap-3 mt-6">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 mt-6">
           <button
             onClick={onCancelar}
             disabled={carregando}

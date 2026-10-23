@@ -48,13 +48,13 @@ export default function PlatformReviews() {
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
           <span className="text-xs font-bold tracking-widest uppercase text-[#5B2EFF] mb-3 block">O que dizem sobre o Hands</span>
-          <h2 className="text-4xl font-black text-[#1F2937] mb-3" style={{ fontFamily: 'Outfit, sans-serif' }}>Avaliações da Plataforma</h2>
+          <h2 className="text-3xl sm:text-4xl font-black text-[#1F2937] mb-3" style={{ fontFamily: 'Outfit, sans-serif' }}>Avaliações da Plataforma</h2>
           <p className="text-gray-500">Veja a opinião de quem usa o Hands no dia a dia</p>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-10 mb-14">
           <div className="flex-shrink-0 bg-[#5B2EFF] rounded-3xl p-8 text-center text-white min-w-[200px] flex flex-col items-center justify-center">
-            <p className="text-7xl font-black mb-1" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            <p className="text-6xl sm:text-7xl font-black mb-1" style={{ fontFamily: 'Outfit, sans-serif' }}>
               {temAvaliacoes ? resumo.media.toFixed(1) : '—'}
             </p>
             <StarRow nota={temAvaliacoes ? resumo.media : 0} size={18} className="justify-center mb-2 gap-1" />

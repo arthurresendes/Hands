@@ -41,7 +41,7 @@ export default function FeaturedProfessionals() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-14">
           <div>
             <span className="text-xs font-bold tracking-widest uppercase text-[#5B2EFF] mb-3 block">Qualidade Garantida</span>
-            <h2 className="text-4xl font-black text-[#1F2937]" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            <h2 className="text-3xl sm:text-4xl font-black text-[#1F2937]" style={{ fontFamily: 'Outfit, sans-serif' }}>
               Profissionais em destaque
               <br />
               <span className="text-gray-400 font-semibold text-2xl">na sua região</span>

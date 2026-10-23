@@ -22,7 +22,7 @@ export default function ForProfessionals() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
           <div>
             <span className="text-xs font-bold tracking-widest uppercase text-[#FFC857] mb-3 block">Trabalhe Conosco</span>
-            <h2 className="text-4xl font-black text-white mb-5 leading-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            <h2 className="text-3xl sm:text-4xl font-black text-white mb-5 leading-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
               Multiplique seus clientes
             </h2>
             <p className="text-white/60 mb-8 leading-relaxed">
