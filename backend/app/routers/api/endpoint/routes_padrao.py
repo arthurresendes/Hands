@@ -1,4 +1,4 @@
-from fastapi import APIRouter,status,HTTPException,Request,Depends,Form,File,UploadFile,Response,Query
+from fastapi import APIRouter,BackgroundTasks,status,HTTPException,Request,Depends,Form,File,UploadFile,Response,Query
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi.responses import FileResponse
@@ -15,6 +15,9 @@ from core.security import verificar_senha
 from src.mongo.busca_clientes import buscar_clientes,detalhe_cliente,perfil_prestador,avaliacoes_recebidas_prestador
 from src.mongo.busca import buscar_prestadores,detalhe_prestador,listar_favoritos,favoritar,desfavoritar,perfil_cliente,minha_avaliacao_hands
 from src.mongo.admin import dashboard_admin,listar_clientes_admin,listar_prestadores_admin,listar_avaliacoes_hands_admin,exportar_clientes_csv,exportar_prestadores_csv,exportar_avaliacoes_hands_csv
+from src.mongo.avaliacoes import avaliacoes_feitas,listar_moderacao,excluir_avaliacao
+from src.emails.envio import enviar_email
+from src.emails.modelos import email_boas_vindas,email_senha_alterada,email_conta_excluida
 from core.auth import criar_token_acesso,setar_cookie_acesso
 from core.deps import exigir_usuario,get_token_payload,obter_token_do_cookie
 from src.documentos import gerar_pdf_termos, TERMOS_VERSAO
@@ -48,6 +51,10 @@ IDADE_MINIMA = 18
 IDADE_MAXIMA = 100
 
 logger = logging.getLogger(__name__)
+
+def enviar_em_segundo_plano(tarefas: BackgroundTasks, destinatario: str, mensagem: tuple[str, str, str]):
+    assunto, texto, html = mensagem
+    tarefas.add_task(enviar_email, destinatario, assunto, texto, html)
 
 def registrar_aceite_termos(aceite: bool) -> dict:
     if not aceite:
@@ -163,6 +170,37 @@ async def admin_exportar_avaliacoes_hands(
     usuario: dict = Depends(exigir_usuario('admin')),
 ):
     return resposta_csv(await exportar_avaliacoes_hands_csv(papel, q, nota), 'avaliacoes-hands')
+
+@router.get('/minhas-avaliacoes-feitas', tags=['GET'], status_code=status.HTTP_200_OK, summary='Avaliações feitas pelo usuário logado')
+async def minhas_avaliacoes_feitas(
+    pagina: int = Query(1, ge=1),
+    limite: int = Query(10, ge=1, le=50),
+    usuario: dict = Depends(exigir_usuario('cliente', 'prestador')),
+):
+    return await avaliacoes_feitas(usuario['role'], usuario['email'], pagina, limite)
+
+@router.get('/admin/moderacao', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Todas as avaliações entre clientes e prestadores')
+async def admin_moderacao(
+    origem: str | None = Query(None, pattern='^(cliente_para_prestador|prestador_para_cliente)$'),
+    q: str | None = Query(None, max_length=100),
+    nota: float | None = Query(None, ge=1, le=5),
+    pagina: int = Query(1, ge=1),
+    limite: int = Query(10, ge=1, le=100),
+    usuario: dict = Depends(exigir_usuario('admin')),
+):
+    return await listar_moderacao(origem, q, nota, pagina, limite)
+
+@router.delete('/admin/moderacao/{origem}/{avaliacao_id}', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Excluir uma avaliação entre cliente e prestador')
+async def admin_excluir_avaliacao(
+    origem: str,
+    avaliacao_id: str,
+    usuario: dict = Depends(exigir_usuario('admin')),
+):
+    if origem not in ('cliente_para_prestador', 'prestador_para_cliente'):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Avaliação não encontrada.')
+    if not await excluir_avaliacao(origem, avaliacao_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Avaliação não encontrada. Ela pode já ter sido excluída.')
+    return {'excluida': True}
 
 @router.get('/', tags=['GET'], status_code=status.HTTP_200_OK, summary='Rota base do projeto')
 async def rota_base():
@@ -336,6 +374,7 @@ async def ver_foto(papel: str, id_usuario: str, request: Request):
 @router.post('/cadastrar_cliente', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Cadastro de clientes')
 async def cadastro_cliente(
     response: Response,
+    tarefas: BackgroundTasks,
     nome: str = Form(..., min_length=1),
     email: str = Form(..., min_length=3),
     celular: str = Form(..., min_length=1),
@@ -362,11 +401,13 @@ async def cadastro_cliente(
     if foto_pronta is not None:
         salvar_foto('cliente', resultado['id'], foto_pronta)
     setar_cookie_acesso(response, criar_token_acesso(sub=resultado['id'], role='cliente'))
+    enviar_em_segundo_plano(tarefas, email, email_boas_vindas(nome, 'cliente'))
     return {'message': f'Sucesso ao cadastrar o cliente: {nome}', 'id': resultado['id'], 'role': 'cliente'}
 
 @router.post('/cadastrar_prestador', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Cadastro de prestador')
 async def cadastro_prestador(
     response: Response,
+    tarefas: BackgroundTasks,
     nome: str = Form(..., min_length=1),
     email: str = Form(..., min_length=3),
     celular: str = Form(..., min_length=1),
@@ -413,6 +454,7 @@ async def cadastro_prestador(
     if foto_pronta is not None:
         salvar_foto('prestador', resultado['id'], foto_pronta)
     setar_cookie_acesso(response, criar_token_acesso(sub=resultado['id'], role='prestador'))
+    enviar_em_segundo_plano(tarefas, email, email_boas_vindas(nome, 'prestador'))
     return {'message': f'Sucesso ao cadastrar o prestador: {nome}', 'id': resultado['id'], 'role': 'prestador'}
 
 @router.post('/foto', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Enviar ou trocar a foto do usuário logado')
@@ -449,7 +491,7 @@ async def adicionar_favorito(favorito: Favorito, usuario: dict = Depends(exigir_
 
 # Rotas PATCH
 @router.patch('/atualizar_cliente', tags=["PATCH"], status_code=status.HTTP_202_ACCEPTED, summary="Atualizando dados do cliente")
-async def atualizar_cliente(cliente: AtualizarCliente, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
+async def atualizar_cliente(cliente: AtualizarCliente, tarefas: BackgroundTasks, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
     if usuario['role'] != 'admin' and cliente.id != usuario['id']:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para acessar este recurso.")
     cliente_busca = await busca_especifica_cliente(cliente.id)
@@ -476,11 +518,12 @@ async def atualizar_cliente(cliente: AtualizarCliente, usuario: dict = Depends(e
         await atualizar(collection_name,cliente.id, "informacoes", cliente.informacoes)
     if cliente.senha is not None:
         await atualizar_senha(collection_name,cliente.id, cliente.senha)
+        enviar_em_segundo_plano(tarefas, cliente_busca['email'], email_senha_alterada(cliente_busca.get('nome')))
     cliente_atualizado = await busca_especifica_cliente(cliente.id)
     return cliente_atualizado
 
 @router.patch('/atualizar_prestador', tags=["PATCH"], status_code=status.HTTP_202_ACCEPTED, summary="Atualizando dados do prestador")
-async def atualizar_prestador(prestador: AtualizarPrestador, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
+async def atualizar_prestador(prestador: AtualizarPrestador, tarefas: BackgroundTasks, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
     if usuario['role'] != 'admin' and prestador.id != usuario['id']:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para acessar este recurso.")
     prestador_busca = await busca_especifica_prestador(prestador.id)
@@ -513,6 +556,7 @@ async def atualizar_prestador(prestador: AtualizarPrestador, usuario: dict = Dep
         await atualizar(collection_name,prestador.id, "valor", prestador.valor)
     if prestador.senha is not None:
         await atualizar_senha(collection_name,prestador.id, prestador.senha)
+        enviar_em_segundo_plano(tarefas, prestador_busca['email'], email_senha_alterada(prestador_busca.get('nome')))
     if prestador.servicos is not None:
         await atualizar(collection_name,prestador.id, "servicos", [servico.strip() for servico in prestador.servicos if servico.strip()])
     if prestador.idiomas is not None:
@@ -529,14 +573,16 @@ async def remover_favorito(email_prestador: str, usuario: dict = Depends(exigir_
     return {'favorito': False}
 
 @router.delete('/deletar_prestador/{email}', tags=["DELETE"], status_code=status.HTTP_204_NO_CONTENT, summary="Deletando prestador por email")
-async def deletar_prestador(email: str, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
+async def deletar_prestador(email: str, tarefas: BackgroundTasks, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
     garantir_dono_ou_admin(usuario, email)
     try:
-        alvo = await prestador_col.find_one({'email': email.strip()}, {'_id': 1})
+        alvo = await prestador_col.find_one({'email': email.strip()}, {'_id': 1, 'nome': 1})
         resultado = await deletar_por_email('prestador', email)
         if alvo is not None:
             remover_foto('prestador', str(alvo['_id']))
         await favorito_col.delete_many({'prestador': email.strip()})
+        if alvo is not None:
+            enviar_em_segundo_plano(tarefas, email.strip(), email_conta_excluida(alvo.get('nome')))
         return resultado
     except HTTPException:
         raise 
@@ -548,14 +594,16 @@ async def deletar_prestador(email: str, usuario: dict = Depends(exigir_usuario('
         )
 
 @router.delete('/deletar_cliente/{email}', tags=["DELETE"], status_code=status.HTTP_204_NO_CONTENT, summary="Deletando cliente por email")
-async def deletar_cliente(email: str, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
+async def deletar_cliente(email: str, tarefas: BackgroundTasks, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
     garantir_dono_ou_admin(usuario, email)
     try:
-        alvo = await cliente_col.find_one({'email': email.strip()}, {'_id': 1})
+        alvo = await cliente_col.find_one({'email': email.strip()}, {'_id': 1, 'nome': 1})
         resultado = await deletar_por_email('cliente', email)
         if alvo is not None:
             remover_foto('cliente', str(alvo['_id']))
         await favorito_col.delete_many({'cliente': email.strip()})
+        if alvo is not None:
+            enviar_em_segundo_plano(tarefas, email.strip(), email_conta_excluida(alvo.get('nome')))
     except HTTPException:
         raise
     except Exception as error:

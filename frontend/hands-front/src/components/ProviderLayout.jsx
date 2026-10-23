@@ -4,11 +4,12 @@ import Logo from './Logo'
 import Avatar from './Avatar'
 import useAuth from '../hooks/useAuth'
 import { rotaAtiva } from '../utils/navegacao'
-import { UsersIcon, StarOutlineIcon, UserIcon, MenuIcon, CloseIcon, LogoutIcon, ChevronDownIcon } from './icons'
+import { UsersIcon, StarOutlineIcon, ChatIcon, UserIcon, MenuIcon, CloseIcon, LogoutIcon, ChevronDownIcon } from './icons'
 
 const navLinks = [
   { label: 'Buscar Clientes', path: '/prestador/clientes', tambem: ['/prestador/cliente'], Icon: UsersIcon },
-  { label: 'Avaliações', path: '/prestador/avaliacoes', Icon: StarOutlineIcon },
+  { label: 'Avaliações Recebidas', path: '/prestador/avaliacoes', Icon: StarOutlineIcon },
+  { label: 'Avaliações Feitas', path: '/prestador/avaliacoes-feitas', Icon: ChatIcon },
   { label: 'Avaliar o Hands', path: '/prestador/avaliar', Icon: StarOutlineIcon },
   { label: 'Minha Conta', path: '/prestador/perfil', Icon: UserIcon },
 ]

@@ -4,11 +4,12 @@ import Logo from './Logo'
 import Avatar from './Avatar'
 import useAuth from '../hooks/useAuth'
 import { rotaAtiva } from '../utils/navegacao'
-import { SearchIcon, UserIcon, StarOutlineIcon, HeartIcon, MenuIcon, CloseIcon, LogoutIcon, ChevronDownIcon } from './icons'
+import { SearchIcon, UserIcon, StarOutlineIcon, ChatIcon, HeartIcon, MenuIcon, CloseIcon, LogoutIcon, ChevronDownIcon } from './icons'
 
 const navLinks = [
   { label: 'Buscar Profissionais', path: '/cliente/buscar', tambem: ['/cliente/profissional'], Icon: SearchIcon },
   { label: 'Favoritos', path: '/cliente/favoritos', Icon: HeartIcon },
+  { label: 'Avaliações Feitas', path: '/cliente/avaliacoes-feitas', Icon: ChatIcon },
   { label: 'Avaliar o Hands', path: '/cliente/avaliar', Icon: StarOutlineIcon },
   { label: 'Minha Conta', path: '/cliente/perfil', Icon: UserIcon },
 ]

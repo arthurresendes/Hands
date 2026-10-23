@@ -13,6 +13,9 @@ import ClientProfile from './pages/ClientProfile'
 import PlatformFeedback from './pages/PlatformFeedback'
 import ClientFavorites from './pages/ClientFavorites'
 import ProviderClients from './pages/ProviderClients'
+import ClientMyReviews from './pages/ClientMyReviews'
+import ProviderMyReviews from './pages/ProviderMyReviews'
+import AdminModeration from './pages/AdminModeration'
 import ProviderReviews from './pages/ProviderReviews'
 import ProviderProfile from './pages/ProviderProfile'
 import ProviderFeedback from './pages/ProviderFeedback'
@@ -48,10 +51,12 @@ export default function App() {
           <Route path="/cliente/perfil" element={<ClientProfile />} />
           <Route path="/cliente/avaliar" element={<PlatformFeedback />} />
           <Route path='/cliente/favoritos' element={<ClientFavorites />} />
+          <Route path="/cliente/avaliacoes-feitas" element={<ClientMyReviews />} />
         </Route>
         <Route element={<RotaProtegida papel="prestador" />}>
           <Route path="/prestador/clientes" element={<ProviderClients />} />
           <Route path="/prestador/avaliacoes" element={<ProviderReviews />} />
+          <Route path="/prestador/avaliacoes-feitas" element={<ProviderMyReviews />} />
           <Route path="/prestador/perfil" element={<ProviderProfile />} />
           <Route path="/prestador/cliente/:id" element={<ClientProfileView />} />
           <Route path="/prestador/avaliar" element={<ProviderFeedback />} />
@@ -63,6 +68,7 @@ export default function App() {
           <Route path="/admin/clientes/:id" element={<AdminClientDetail />} />
           <Route path="/admin/prestadores/:id" element={<AdminProviderDetail />} />
           <Route path="/admin/avaliacoes" element={<AdminReviews />} />
+          <Route path="/admin/moderacao" element={<AdminModeration />} />
         </Route>
         <Route path="/recuperar-senha/:role" element={<ForgotPasswordEmail />} />
         <Route path="/recuperar-senha/:role/codigo" element={<ForgotPasswordCode />} />
