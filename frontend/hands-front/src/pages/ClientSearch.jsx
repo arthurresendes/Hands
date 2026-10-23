@@ -9,8 +9,8 @@ import { favoritarPrestador } from '../api/post/cadastro/cadastroFavorito'
 import { desfavoritarPrestador } from '../api/delete/deletarFavorito'
 import useEstadoPainel from '../hooks/useEstadoPainel'
 import usePerfil from '../hooks/usePerfil'
+import { SERVICOS } from '../utils/servicos'
 
-const servicos = ['Eletricista', 'Encanador', 'Pintor', 'Diarista', 'Pedreiro', 'Jardineiro', 'Técnico de TI', 'Montador']
 
 const FILTROS_INICIAIS = {
   q: '',
@@ -112,7 +112,7 @@ export default function ClientSearch() {
           </div>
           <select name="servico" value={form.servico} onChange={alterar} className={`${classeCampo} lg:w-56`}>
             <option value="">Todos os serviços</option>
-            {servicos.map((s) => (
+            {SERVICOS.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>

@@ -8,25 +8,27 @@ from core.security import verificar_senha
 from core.database import cliente_col, prestador_col, admin_col
 
 # Cria o token
-def _criar_token(sub: str, role: str, tempo_vida: timedelta) -> str:
+def _criar_token(sub: str, role: str, tempo_vida: timedelta, versao: int = 0, lembrar: bool = False) -> str:
     sp = timezone("America/Sao_Paulo")
     agora = datetime.now(tz=sp)
     payload = {
         "sub": sub,
         "role": role,
         "type": "access_token",
+        "sv": versao,
+        "lem": lembrar,
         "iat": agora,
         "exp": agora + tempo_vida,
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.ALGORITHM)
 
-def criar_token_acesso(sub: str, role: str, lembrar: bool = False) -> str:
+def criar_token_acesso(sub: str, role: str, lembrar: bool = False, versao: int = 0) -> str:
     tempo_vida = (
         timedelta(days=settings.ACCESS_TOKEN_LEMBRAR_DIAS)
         if lembrar
         else timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    return _criar_token(sub=sub, role=role, tempo_vida=tempo_vida)
+    return _criar_token(sub=sub, role=role, tempo_vida=tempo_vida, versao=versao, lembrar=lembrar)
 
 
 def criar_token_redefinicao(id_solicitacao: str) -> str:
@@ -73,6 +75,12 @@ def setar_cookie_acesso(response: Response, token: str, lembrar: bool = False):
         max_age=settings.ACCESS_TOKEN_LEMBRAR_DIAS * 86400 if lembrar else None,
         path="/",
     )
+
+def renovar_cookie_acesso(response: Response, sub: str, role: str, versao: int, lembrar: bool):
+    setar_cookie_acesso(response, criar_token_acesso(sub=sub, role=role, lembrar=lembrar, versao=versao), lembrar=lembrar)
+
+def limpar_cookie_acesso(response: Response):
+    response.delete_cookie(settings.COOKIE_NAME, path="/")
 
 # Autenticação
 async def autenticar_cliente(email: str, senha: str) -> Optional[dict]:

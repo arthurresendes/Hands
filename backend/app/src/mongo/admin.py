@@ -7,6 +7,7 @@ from core.database import (
 )
 from src.mongo.busca import PIPELINE_NOTA, _regex, _endereco, _nota_arredondada
 from src.mongo.query import formatar_cidade, extrair_nota_geral
+from src.mongo.paginacao import paginar, listar_todos, calcular_pagina, filtro_cadastro, campo_data
 
 MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 TIPOS_EXPORTACAO = ('clientes', 'prestadores', 'avaliacoes_hands')
@@ -62,27 +63,38 @@ async def total_exportacoes() -> int:
     doc = await contadores_col.find_one({'_id': 'exportacoes'})
     return (doc or {}).get('total', 0)
 
-async def _datas_cadastro(colecao) -> list[datetime]:
-    docs = await colecao.find({}, {'data_criacao': 1}).to_list(length=None)
-    return [data_do_documento(d) for d in docs]
+def _contagem_por_mes(contagem: dict, quantidade: int = 6, referencia: datetime | None = None) -> list[dict]:
+    return [
+        {'mes': f'{ano}-{mes:02d}', 'rotulo': MESES[mes - 1], 'total': contagem.get((ano, mes), 0)}
+        for ano, mes in ultimos_meses(quantidade, referencia)
+    ]
+
+async def _cadastros_por_mes_db(colecao, quantidade: int, referencia: datetime) -> list[dict]:
+    ano, mes = ultimos_meses(quantidade, referencia)[0]
+    inicio = datetime(ano, mes, 1)
+    etapas = [
+        {'$match': filtro_cadastro(inicio, None)},
+        {'$group': {'_id': {'ano': {'$year': campo_data()}, 'mes': {'$month': campo_data()}}, 'total': {'$sum': 1}}},
+    ]
+    docs = await colecao.aggregate(etapas).to_list(length=None)
+    return _contagem_por_mes({(d['_id']['ano'], d['_id']['mes']): d['total'] for d in docs}, quantidade, referencia)
 
 async def dashboard_admin(referencia: datetime | None = None) -> dict:
     agora = referencia or datetime.now()
     limite_30_dias = agora - timedelta(days=30)
-    datas_clientes = await _datas_cadastro(cliente_col)
-    datas_prestadores = await _datas_cadastro(prestador_col)
+    recentes = filtro_cadastro(limite_30_dias, None)
     return {
-        'total_clientes': len(datas_clientes),
-        'total_prestadores': len(datas_prestadores),
+        'total_clientes': await cliente_col.count_documents({}),
+        'total_prestadores': await prestador_col.count_documents({}),
         'total_avaliacoes_hands': await feedback_hands_col.count_documents({}),
         'total_exportacoes': await total_exportacoes(),
-        'novos_clientes_30_dias': sum(1 for d in datas_clientes if d >= limite_30_dias),
-        'novos_prestadores_30_dias': sum(1 for d in datas_prestadores if d >= limite_30_dias),
-        'clientes_por_mes': cadastros_por_mes(datas_clientes, 6, agora),
-        'prestadores_por_mes': cadastros_por_mes(datas_prestadores, 6, agora),
+        'novos_clientes_30_dias': await cliente_col.count_documents(recentes),
+        'novos_prestadores_30_dias': await prestador_col.count_documents(recentes),
+        'clientes_por_mes': await _cadastros_por_mes_db(cliente_col, 6, agora),
+        'prestadores_por_mes': await _cadastros_por_mes_db(prestador_col, 6, agora),
     }
 
-def _filtro_pessoas(q, cidade, estado, servico=None) -> dict:
+def _filtro_pessoas(q, cidade, estado, servico=None, cadastro_de=None, cadastro_ate=None) -> dict:
     condicoes = []
     if q and q.strip():
         condicoes.append({'$or': [
@@ -94,25 +106,26 @@ def _filtro_pessoas(q, cidade, estado, servico=None) -> dict:
         condicoes.append({'endereco.estado': estado.strip().upper()})
     if servico and servico.strip():
         condicoes.append({'servicos': _regex(servico)})
+    periodo = filtro_cadastro(inicio_do_dia(cadastro_de), fim_do_dia(cadastro_ate))
+    if periodo:
+        condicoes.append(periodo)
     return {'$and': condicoes} if condicoes else {}
 
-def _passa_periodo(data: datetime, inicio: datetime | None, fim: datetime | None) -> bool:
-    return (inicio is None or data >= inicio) and (fim is None or data < fim)
-
-def _ordenar_pessoas(itens: list[dict], ordenar: str | None) -> list[dict]:
+def _ordem_pessoas(ordenar: str | None) -> dict:
     if ordenar == 'nome':
-        return sorted(itens, key=lambda i: (i['nome'] or '').lower())
+        return {'nome_ord': 1, '_id': 1}
     if ordenar == 'antigos':
-        return sorted(itens, key=lambda i: i['cadastrado_em'])
+        return {'_id': 1}
     if ordenar == 'nota':
-        return sorted(itens, key=lambda i: (i.get('nota_media') or 0, i.get('total_avaliacoes') or 0), reverse=True)
-    return sorted(itens, key=lambda i: i['cadastrado_em'], reverse=True)
+        return {'nota_media': -1, 'total_avaliacoes': -1, '_id': -1}
+    return {'_id': -1}
 
-def _paginar(itens: list, pagina: int, limite: int) -> tuple[list, int]:
-    total_paginas = max(1, ceil(len(itens) / limite))
-    pagina = min(pagina, total_paginas)
-    inicio = (pagina - 1) * limite
-    return itens[inicio:inicio + limite], pagina
+ETAPA_NOME_ORDENACAO = {'$addFields': {'nome_ord': {'$toLower': {'$ifNull': ['$nome', '']}}}}
+ETAPA_ARREDONDAR_NOTA = {'$addFields': {'nota_media': {'$round': ['$nota_media', 1]}}}
+
+def _paginado(total: int, pagina: int, limite: int, itens: list, chave: str) -> dict:
+    pagina, total_paginas = calcular_pagina(total, pagina, limite)
+    return {chave: itens, 'total': total, 'pagina': pagina, 'limite': limite, 'total_paginas': total_paginas}
 
 def _item_pessoa(doc: dict, feitas: dict) -> dict:
     endereco = _endereco(doc)
@@ -127,54 +140,65 @@ def _item_pessoa(doc: dict, feitas: dict) -> dict:
         'avaliacoes_feitas': feitas.get(doc.get('email'), 0),
     }
 
-async def _avaliacoes_feitas(colecao_nome: str) -> dict:
-    docs = await db[colecao_nome].aggregate([{'$group': {'_id': '$avaliador', 'total': {'$sum': 1}}}]).to_list(length=None)
+async def _avaliacoes_feitas(colecao_nome: str, emails: list) -> dict:
+    if not emails:
+        return {}
+    etapas = [{'$match': {'avaliador': {'$in': emails}}}, {'$group': {'_id': '$avaliador', 'total': {'$sum': 1}}}]
+    docs = await db[colecao_nome].aggregate(etapas).to_list(length=None)
     return {d['_id']: d['total'] for d in docs}
 
+def _etapas_clientes(q, cidade, estado, cadastro_de, cadastro_ate, ordenar) -> tuple[list, list]:
+    base = [{'$match': _filtro_pessoas(q, cidade, estado, None, cadastro_de, cadastro_ate)}]
+    if ordenar == 'nome':
+        base.append(ETAPA_NOME_ORDENACAO)
+    return base, [{'$project': {'senha': 0, 'cpf': 0}}]
+
+async def _itens_clientes(docs: list) -> list[dict]:
+    feitas = await _avaliacoes_feitas('feedback_prestador', [d['email'] for d in docs if d.get('email')])
+    return [_item_pessoa(d, feitas) for d in docs]
+
 async def _carregar_clientes(q, cidade, estado, cadastro_de, cadastro_ate, ordenar) -> list[dict]:
-    docs = await cliente_col.find(_filtro_pessoas(q, cidade, estado), {'senha': 0, 'cpf': 0}).to_list(length=None)
-    feitas = await _avaliacoes_feitas('feedback_prestador')
-    inicio, fim = inicio_do_dia(cadastro_de), fim_do_dia(cadastro_ate)
-    itens = [_item_pessoa(d, feitas) for d in docs if _passa_periodo(data_do_documento(d), inicio, fim)]
-    return _ordenar_pessoas(itens, ordenar)
+    base, apos = _etapas_clientes(q, cidade, estado, cadastro_de, cadastro_ate, ordenar)
+    return await _itens_clientes(await listar_todos(cliente_col, base, _ordem_pessoas(ordenar), apos))
 
 async def listar_clientes_admin(q=None, cidade=None, estado=None, cadastro_de=None, cadastro_ate=None, ordenar=None, pagina=1, limite=10) -> dict:
-    itens = await _carregar_clientes(q, cidade, estado, cadastro_de, cadastro_ate, ordenar)
-    pagina_itens, pagina = _paginar(itens, pagina, limite)
-    return {
-        'clientes': pagina_itens, 'total': len(itens), 'pagina': pagina, 'limite': limite,
-        'total_paginas': max(1, ceil(len(itens) / limite)),
-    }
+    base, apos = _etapas_clientes(q, cidade, estado, cadastro_de, cadastro_ate, ordenar)
+    docs, total, pagina, _ = await paginar(cliente_col, base, _ordem_pessoas(ordenar), pagina, limite, apos)
+    return _paginado(total, pagina, limite, await _itens_clientes(docs), 'clientes')
 
-async def _carregar_prestadores(q, servico, cidade, estado, nota_minima, cadastro_de, cadastro_ate, ordenar) -> list[dict]:
-    pipeline = [{'$match': _filtro_pessoas(q, cidade, estado, servico)}] + PIPELINE_NOTA
-    docs = await prestador_col.aggregate(pipeline).to_list(length=None)
-    feitas = await _avaliacoes_feitas('feedback_cliente')
-    inicio, fim = inicio_do_dia(cadastro_de), fim_do_dia(cadastro_ate)
+def _etapas_prestadores(q, servico, cidade, estado, nota_minima, cadastro_de, cadastro_ate, ordenar) -> tuple[list, list]:
+    base = [{'$match': _filtro_pessoas(q, cidade, estado, servico, cadastro_de, cadastro_ate)}]
+    if ordenar == 'nome':
+        base.append(ETAPA_NOME_ORDENACAO)
+    etapas_nota = PIPELINE_NOTA + [ETAPA_ARREDONDAR_NOTA]
+    if nota_minima is not None:
+        etapas_nota = etapas_nota + [{'$match': {'nota_media': {'$gte': nota_minima}}}]
+    if ordenar == 'nota' or nota_minima is not None:
+        return base + etapas_nota, []
+    return base, etapas_nota
+
+async def _itens_prestadores(docs: list) -> list[dict]:
+    feitas = await _avaliacoes_feitas('feedback_cliente', [d['email'] for d in docs if d.get('email')])
     itens = []
     for d in docs:
-        if not _passa_periodo(data_do_documento(d), inicio, fim):
-            continue
-        nota = _nota_arredondada(d.get('nota_media'))
-        if nota_minima is not None and (nota is None or nota < nota_minima):
-            continue
         item = _item_pessoa(d, feitas)
         item.update({
             'servicos': d.get('servicos') or [],
             'valor': d.get('valor'),
-            'nota_media': nota,
+            'nota_media': _nota_arredondada(d.get('nota_media')),
             'total_avaliacoes': d.get('total_avaliacoes') or 0,
         })
         itens.append(item)
-    return _ordenar_pessoas(itens, ordenar)
+    return itens
+
+async def _carregar_prestadores(q, servico, cidade, estado, nota_minima, cadastro_de, cadastro_ate, ordenar) -> list[dict]:
+    base, apos = _etapas_prestadores(q, servico, cidade, estado, nota_minima, cadastro_de, cadastro_ate, ordenar)
+    return await _itens_prestadores(await listar_todos(prestador_col, base, _ordem_pessoas(ordenar), apos))
 
 async def listar_prestadores_admin(q=None, servico=None, cidade=None, estado=None, nota_minima=None, cadastro_de=None, cadastro_ate=None, ordenar=None, pagina=1, limite=10) -> dict:
-    itens = await _carregar_prestadores(q, servico, cidade, estado, nota_minima, cadastro_de, cadastro_ate, ordenar)
-    pagina_itens, pagina = _paginar(itens, pagina, limite)
-    return {
-        'prestadores': pagina_itens, 'total': len(itens), 'pagina': pagina, 'limite': limite,
-        'total_paginas': max(1, ceil(len(itens) / limite)),
-    }
+    base, apos = _etapas_prestadores(q, servico, cidade, estado, nota_minima, cadastro_de, cadastro_ate, ordenar)
+    docs, total, pagina, _ = await paginar(prestador_col, base, _ordem_pessoas(ordenar), pagina, limite, apos)
+    return _paginado(total, pagina, limite, await _itens_prestadores(docs), 'prestadores')
 
 def _nota_na_faixa(nota: float, alvo: float) -> bool:
     return alvo - 0.25 <= nota < alvo + 0.25
@@ -184,64 +208,82 @@ def _criterios(nota) -> dict | None:
         return None
     return {c: nota.get(c) for c in ('facilidade', 'qualidade', 'confiabilidade')}
 
-async def _autores(emails: set) -> dict:
-    lista = list(emails)
-    clientes = await cliente_col.find({'email': {'$in': lista}}, {'nome': 1, 'email': 1}).to_list(length=None)
-    prestadores = await prestador_col.find({'email': {'$in': lista}}, {'nome': 1, 'email': 1}).to_list(length=None)
-    autores = {p['email']: {'id': str(p['_id']), 'nome': p.get('nome'), 'papel': 'prestador'} for p in prestadores}
-    autores.update({c['email']: {'id': str(c['_id']), 'nome': c.get('nome'), 'papel': 'cliente'} for c in clientes})
-    return autores
+def _etapas_nota_geral() -> list:
+    return [
+        {'$addFields': {'nota_geral': {'$cond': [{'$isNumber': '$nota'}, '$nota', '$nota.notaGeral']}}},
+        {'$match': {'nota_geral': {'$type': 'number'}}},
+        {'$addFields': {'nota_geral': {'$round': ['$nota_geral', 1]}, 'data_ord': campo_data('data_avaliacao')}},
+    ]
+
+def _etapas_autor_hands() -> list:
+    return [
+        {'$lookup': {'from': 'cliente', 'localField': 'avaliador', 'foreignField': 'email', 'as': 'autor_cliente'}},
+        {'$lookup': {'from': 'prestador', 'localField': 'avaliador', 'foreignField': 'email', 'as': 'autor_prestador'}},
+        {'$addFields': {
+            'autor_nome': {'$ifNull': [{'$arrayElemAt': ['$autor_cliente.nome', 0]}, {'$arrayElemAt': ['$autor_prestador.nome', 0]}]},
+            'autor_id': {'$ifNull': [{'$arrayElemAt': ['$autor_cliente._id', 0]}, {'$arrayElemAt': ['$autor_prestador._id', 0]}]},
+            'autor_papel': {'$cond': [
+                {'$gt': [{'$size': '$autor_cliente'}, 0]}, 'cliente',
+                {'$cond': [{'$gt': [{'$size': '$autor_prestador'}, 0]}, 'prestador', None]},
+            ]},
+        }},
+        {'$project': {'autor_cliente': 0, 'autor_prestador': 0}},
+    ]
+
+def _etapas_hands(papel, q, nota) -> tuple[list, list]:
+    base = _etapas_nota_geral()
+    if nota is not None:
+        base.append({'$match': {'nota_geral': {'$gte': nota - 0.25, '$lt': nota + 0.25}}})
+    autor = _etapas_autor_hands()
+    filtra_autor = bool(papel) or bool(q and q.strip())
+    if filtra_autor:
+        base += autor
+        condicoes = []
+        if papel:
+            condicoes.append({'autor_papel': papel})
+        if q and q.strip():
+            condicoes.append({'$or': [{'autor_nome': _regex(q)}, {'avaliador': _regex(q)}, {'mensagem': _regex(q)}]})
+        base.append({'$match': {'$and': condicoes}})
+    return base, ([] if filtra_autor else autor)
+
+def _item_hands(d: dict) -> dict:
+    nota = d.get('nota')
+    return {
+        '_id': str(d['_id']),
+        'autor': d.get('autor_nome') or 'Usuário removido',
+        'autor_email': d.get('avaliador'),
+        'autor_id': str(d['autor_id']) if d.get('autor_id') else None,
+        'papel': d.get('autor_papel'),
+        'nota': d['nota_geral'],
+        'criterios': _criterios(nota),
+        'mensagem': (d.get('mensagem') or '').strip(),
+        'data': data_do_documento(d, 'data_avaliacao').isoformat(),
+    }
 
 async def _carregar_avaliacoes_hands(papel, q, nota) -> list[dict]:
-    docs = await feedback_hands_col.find({}).sort('_id', -1).to_list(length=None)
-    autores = await _autores({d.get('avaliador') for d in docs if d.get('avaliador')})
-    itens = []
-    for d in docs:
-        geral = extrair_nota_geral(d.get('nota'))
-        if not isinstance(geral, (int, float)):
-            continue
-        autor = autores.get(d.get('avaliador'))
-        item = {
-            '_id': str(d['_id']),
-            'autor': autor['nome'] if autor else 'Usuário removido',
-            'autor_email': d.get('avaliador'),
-            'autor_id': autor['id'] if autor else None,
-            'papel': autor['papel'] if autor else None,
-            'nota': round(geral, 1),
-            'criterios': _criterios(d.get('nota')),
-            'mensagem': (d.get('mensagem') or '').strip(),
-            'data': data_do_documento(d, 'data_avaliacao').isoformat(),
-        }
-        if papel and item['papel'] != papel:
-            continue
-        if nota is not None and not _nota_na_faixa(item['nota'], nota):
-            continue
-        if q and q.strip():
-            termo = q.strip().lower()
-            if termo not in (item['autor'] or '').lower() and termo not in item['mensagem'].lower():
-                continue
-        itens.append(item)
-    return itens
+    base, apos = _etapas_hands(papel, q, nota)
+    return [_item_hands(d) for d in await listar_todos(feedback_hands_col, base, {'_id': -1}, apos)]
 
-def resumo_avaliacoes(itens: list[dict], referencia: datetime | None = None) -> dict:
+async def resumo_hands_admin(papel=None, referencia: datetime | None = None) -> dict:
     agora = referencia or datetime.now()
-    semana = (agora - timedelta(days=7)).isoformat()
-    total = len(itens)
-    return {
-        'media': round(sum(i['nota'] for i in itens) / total, 1) if total else None,
-        'total': total,
-        'novas_semana': sum(1 for i in itens if i['data'] >= semana),
-    }
+    base, _ = _etapas_hands(papel, None, None)
+    etapas = base + [{'$group': {
+        '_id': None,
+        'media': {'$avg': '$nota_geral'},
+        'total': {'$sum': 1},
+        'novas': {'$sum': {'$cond': [{'$gte': ['$data_ord', agora - timedelta(days=7)]}, 1, 0]}},
+    }}]
+    docs = await feedback_hands_col.aggregate(etapas).to_list(length=1)
+    if not docs:
+        return {'media': None, 'total': 0, 'novas_semana': 0}
+    return {'media': round(docs[0]['media'], 1), 'total': docs[0]['total'], 'novas_semana': docs[0]['novas']}
 
 async def listar_avaliacoes_hands_admin(papel=None, q=None, nota=None, pagina=1, limite=10) -> dict:
-    base = await _carregar_avaliacoes_hands(papel, None, None)
-    itens = await _carregar_avaliacoes_hands(papel, q, nota) if (q or nota is not None) else base
-    pagina_itens, pagina = _paginar(itens, pagina, limite)
-    return {
-        'avaliacoes': pagina_itens, 'total': len(itens), 'pagina': pagina, 'limite': limite,
-        'total_paginas': max(1, ceil(len(itens) / limite)),
-        'resumo': resumo_avaliacoes(base),
-    }
+    base, apos = _etapas_hands(papel, q, nota)
+    docs, total, pagina, _ = await paginar(feedback_hands_col, base, {'_id': -1}, pagina, limite, apos)
+    resposta = _paginado(total, pagina, limite, [_item_hands(d) for d in docs], 'avaliacoes')
+    resposta['resumo'] = await resumo_hands_admin(papel)
+    return resposta
 
 def _celula(valor) -> str:
     if valor is None:

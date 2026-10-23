@@ -3,6 +3,7 @@ from core.database import cliente_col,prestador_col,db,feedback_hands_col,feedba
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import HTTPException, status
+from pymongo import ReturnDocument
 from core.security import gerar_senha_hash
 from src.mongo.criacao import validar_cpf,pegar_dados_cep,cpf_em_uso
 from datetime import datetime, timedelta, timezone
@@ -75,9 +76,9 @@ async def atualizar_senha(collection_name: str,id: str, senha: str):
     try:
         collection = db[collection_name]
         filtro = {"_id": ObjectId(id)}
-        alteracao = {"$set": {"senha": gerar_senha_hash(senha)}}
-        res = await collection.update_one(filtro,alteracao)
-        return res.modified_count > 0
+        alteracao = {"$set": {"senha": gerar_senha_hash(senha)}, "$inc": {"sessao_versao": 1}}
+        atualizado = await collection.find_one_and_update(filtro, alteracao, projection={"sessao_versao": 1}, return_document=ReturnDocument.AFTER)
+        return atualizado["sessao_versao"] if atualizado else False
     except InvalidId:
         return False
 

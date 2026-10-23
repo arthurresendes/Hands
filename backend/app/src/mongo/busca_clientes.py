@@ -8,7 +8,7 @@ from core.database import cliente_col, prestador_col, feedback_cliente_col, feed
 from src.mongo.query import formatar_cidade
 from src.mongo.busca import (
     PIPELINE_NOTA, _regex, _so_digitos, _endereco, _data_cadastro, _nota_arredondada,
-    _chave_ordenacao, _referencia_cep, _na_regiao, _mascarar_cpf, distancia_km,
+    _chave_ordenacao, _referencia_cep, _na_regiao, _mascarar_cpf, distancia_km, buscar_pagina_db,
 )
 
 def pipeline_nota_clientes():
@@ -71,12 +71,22 @@ async def buscar_clientes(
     if condicoes:
         filtro['$and'] = condicoes
 
+    referencia = await _referencia_cep(cep) if cep and cep.strip() else None
+    if referencia is None:
+        docs, total, pagina, total_paginas = await buscar_pagina_db(
+            cliente_col, filtro, pipeline_nota_clientes(), ordenar or 'nome', nota_minima, pagina, limite,
+        )
+        return {
+            'clientes': [montar_item_cliente(doc, avaliados) for doc in docs],
+            'total': total, 'pagina': pagina, 'limite': limite, 'total_paginas': total_paginas,
+            'referencia_cep': None,
+        }
+
     pipeline = [{'$match': filtro}] + pipeline_nota_clientes()
     if nota_minima is not None:
         pipeline.append({'$match': {'nota_media': {'$gte': nota_minima}}})
     docs = await cliente_col.aggregate(pipeline).to_list(length=None)
 
-    referencia = await _referencia_cep(cep) if cep and cep.strip() else None
     itens = []
     for doc in docs:
         item = montar_item_cliente(doc, avaliados, referencia)

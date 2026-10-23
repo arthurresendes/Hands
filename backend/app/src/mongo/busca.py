@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from core.database import cliente_col, prestador_col, feedback_cliente_col, feedback_prestador_col, feedback_hands_col, favorito_col
 from src.mongo.criacao import pegar_dados_cep
 from src.mongo.query import formatar_cidade
+from src.mongo.paginacao import paginar
 
 RAIO_TERRA_KM = 6371.0
 NOTA_BASE = 4.0
@@ -28,6 +29,44 @@ PIPELINE_NOTA = [
     }},
     {'$project': {'resumo_nota': 0, 'senha': 0, 'cpf': 0}}
 ]
+
+ETAPA_CAMPOS_BUSCA = {'$addFields': {
+    'nome_ord': {'$toLower': {'$ifNull': ['$nome', '']}},
+    'valor_ord': {'$ifNull': ['$valor', 1e18]},
+}}
+ETAPA_ARREDONDAR = {'$addFields': {'nota_media': {'$round': ['$nota_media', 1]}}}
+ETAPA_PONTUACAO = {'$addFields': {
+    'nota_ord': {'$ifNull': ['$nota_media', -1]},
+    'pont_ord': {'$cond': [
+        {'$gt': ['$total_avaliacoes', 0]},
+        {'$divide': [
+            {'$add': [{'$multiply': ['$nota_media', '$total_avaliacoes']}, NOTA_BASE * PESO_NOTA_BASE]},
+            {'$add': ['$total_avaliacoes', PESO_NOTA_BASE]},
+        ]},
+        -1,
+    ]},
+}}
+
+def _ordem_mongo(ordenar: str | None) -> tuple[dict, bool]:
+    if ordenar == 'preco':
+        return {'valor_ord': 1, 'nome_ord': 1, '_id': 1}, False
+    if ordenar in ('nome', 'distancia'):
+        return {'nome_ord': 1, '_id': 1}, False
+    if ordenar == 'avaliacoes':
+        return {'total_avaliacoes': -1, 'nome_ord': 1, '_id': 1}, True
+    if ordenar == 'nota':
+        return {'nota_ord': -1, 'total_avaliacoes': -1, 'nome_ord': 1, '_id': 1}, True
+    return {'pont_ord': -1, 'nome_ord': 1, '_id': 1}, True
+
+async def buscar_pagina_db(colecao, filtro: dict, pipeline_nota: list, ordenar: str | None, nota_minima, pagina: int, limite: int):
+    ordem, precisa_nota = _ordem_mongo(ordenar)
+    etapas_nota = pipeline_nota + [ETAPA_ARREDONDAR]
+    if nota_minima is not None:
+        etapas_nota = etapas_nota + [{'$match': {'nota_media': {'$gte': nota_minima}}}]
+    base = [{'$match': filtro}, ETAPA_CAMPOS_BUSCA]
+    if precisa_nota or nota_minima is not None:
+        return await paginar(colecao, base + etapas_nota + [ETAPA_PONTUACAO], ordem, pagina, limite)
+    return await paginar(colecao, base, ordem, pagina, limite, etapas_nota)
 
 def _regex(texto: str):
     return {'$regex': re.escape(texto.strip()), '$options': 'i'}
@@ -156,12 +195,22 @@ async def buscar_prestadores(
     if condicoes:
         filtro['$and'] = condicoes
 
+    referencia = await _referencia_cep(cep) if cep and cep.strip() else None
+    if referencia is None:
+        docs, total, pagina, total_paginas = await buscar_pagina_db(
+            prestador_col, filtro, PIPELINE_NOTA, ordenar, nota_minima, pagina, limite,
+        )
+        return {
+            'prestadores': [montar_item(doc, favoritos) for doc in docs],
+            'total': total, 'pagina': pagina, 'limite': limite, 'total_paginas': total_paginas,
+            'referencia_cep': None,
+        }
+
     pipeline = [{'$match': filtro}] + PIPELINE_NOTA
     if nota_minima is not None:
         pipeline.append({'$match': {'nota_media': {'$gte': nota_minima}}})
     docs = await prestador_col.aggregate(pipeline).to_list(length=None)
 
-    referencia = await _referencia_cep(cep) if cep and cep.strip() else None
     itens = []
     for doc in docs:
         item = montar_item(doc, favoritos, referencia)

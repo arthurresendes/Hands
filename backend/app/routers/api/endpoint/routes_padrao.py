@@ -18,10 +18,11 @@ from src.mongo.admin import dashboard_admin,listar_clientes_admin,listar_prestad
 from src.mongo.avaliacoes import avaliacoes_feitas,listar_moderacao,excluir_avaliacao
 from src.emails.envio import enviar_email
 from src.emails.modelos import email_boas_vindas,email_senha_alterada,email_conta_excluida
-from core.auth import criar_token_acesso,setar_cookie_acesso
+from core.auth import criar_token_acesso,setar_cookie_acesso,renovar_cookie_acesso,limpar_cookie_acesso
 from core.deps import exigir_usuario,get_token_payload,obter_token_do_cookie
 from src.documentos import gerar_pdf_termos, TERMOS_VERSAO
 from src.armazenamento import preparar_foto,salvar_foto,caminho_foto,remover_foto
+from core.limitador import limiter, LIMITE_ALTERAR_CONTA, LIMITE_CADASTRO, LIMITE_ESCRITA, LIMITE_EXCLUIR_CONTA, LIMITE_EXPORTACAO, LIMITE_LEITURA, LIMITE_PUBLICO, LIMITE_UPLOAD
 
 router = APIRouter(prefix="/api/v1")
 
@@ -84,7 +85,8 @@ def resposta_csv(conteudo: str, nome: str) -> Response:
     )
 
 @router.get('/termos-de-uso', tags=['GET'], status_code=status.HTTP_200_OK, summary='Termos de uso e política de privacidade em PDF')
-async def baixar_termos_de_uso():
+@limiter.limit(LIMITE_PUBLICO)
+async def baixar_termos_de_uso(request: Request, ):
     return Response(
         content=gerar_pdf_termos(),
         media_type='application/pdf',
@@ -92,11 +94,14 @@ async def baixar_termos_de_uso():
     )
 
 @router.get('/admin/dashboard', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Indicadores do dashboard do admin')
-async def admin_dashboard(usuario: dict = Depends(exigir_usuario('admin'))):
+@limiter.limit(LIMITE_LEITURA)
+async def admin_dashboard(request: Request, usuario: dict = Depends(exigir_usuario('admin'))):
     return await dashboard_admin()
 
 @router.get('/admin/clientes', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Listagem de clientes para o admin')
+@limiter.limit(LIMITE_LEITURA)
 async def admin_clientes(
+    request: Request,
     q: str | None = Query(None, max_length=100),
     cidade: str | None = Query(None, max_length=60),
     estado: str | None = Query(None, max_length=2),
@@ -110,7 +115,9 @@ async def admin_clientes(
     return await listar_clientes_admin(q, cidade, estado, cadastro_de, cadastro_ate, ordenar, pagina, limite)
 
 @router.get('/admin/clientes/exportar', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Exportar todos os clientes filtrados em CSV')
+@limiter.limit(LIMITE_EXPORTACAO)
 async def admin_exportar_clientes(
+    request: Request,
     q: str | None = Query(None, max_length=100),
     cidade: str | None = Query(None, max_length=60),
     estado: str | None = Query(None, max_length=2),
@@ -122,7 +129,9 @@ async def admin_exportar_clientes(
     return resposta_csv(await exportar_clientes_csv(q, cidade, estado, cadastro_de, cadastro_ate, ordenar), 'clientes')
 
 @router.get('/admin/prestadores', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Listagem de prestadores para o admin')
+@limiter.limit(LIMITE_LEITURA)
 async def admin_prestadores(
+    request: Request,
     q: str | None = Query(None, max_length=100),
     servico: str | None = Query(None, max_length=60),
     cidade: str | None = Query(None, max_length=60),
@@ -138,7 +147,9 @@ async def admin_prestadores(
     return await listar_prestadores_admin(q, servico, cidade, estado, nota_minima, cadastro_de, cadastro_ate, ordenar, pagina, limite)
 
 @router.get('/admin/prestadores/exportar', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Exportar todos os prestadores filtrados em CSV')
+@limiter.limit(LIMITE_EXPORTACAO)
 async def admin_exportar_prestadores(
+    request: Request,
     q: str | None = Query(None, max_length=100),
     servico: str | None = Query(None, max_length=60),
     cidade: str | None = Query(None, max_length=60),
@@ -152,7 +163,9 @@ async def admin_exportar_prestadores(
     return resposta_csv(await exportar_prestadores_csv(q, servico, cidade, estado, nota_minima, cadastro_de, cadastro_ate, ordenar), 'prestadores')
 
 @router.get('/admin/avaliacoes-hands', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Avaliações do Hands para o admin')
+@limiter.limit(LIMITE_LEITURA)
 async def admin_avaliacoes_hands(
+    request: Request,
     papel: str | None = Query(None, pattern='^(cliente|prestador)$'),
     q: str | None = Query(None, max_length=100),
     nota: float | None = Query(None, ge=1, le=5),
@@ -163,7 +176,9 @@ async def admin_avaliacoes_hands(
     return await listar_avaliacoes_hands_admin(papel, q, nota, pagina, limite)
 
 @router.get('/admin/avaliacoes-hands/exportar', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Exportar todas as avaliações do Hands em CSV')
+@limiter.limit(LIMITE_EXPORTACAO)
 async def admin_exportar_avaliacoes_hands(
+    request: Request,
     papel: str | None = Query(None, pattern='^(cliente|prestador)$'),
     q: str | None = Query(None, max_length=100),
     nota: float | None = Query(None, ge=1, le=5),
@@ -172,7 +187,9 @@ async def admin_exportar_avaliacoes_hands(
     return resposta_csv(await exportar_avaliacoes_hands_csv(papel, q, nota), 'avaliacoes-hands')
 
 @router.get('/minhas-avaliacoes-feitas', tags=['GET'], status_code=status.HTTP_200_OK, summary='Avaliações feitas pelo usuário logado')
+@limiter.limit(LIMITE_LEITURA)
 async def minhas_avaliacoes_feitas(
+    request: Request,
     pagina: int = Query(1, ge=1),
     limite: int = Query(10, ge=1, le=50),
     usuario: dict = Depends(exigir_usuario('cliente', 'prestador')),
@@ -180,7 +197,9 @@ async def minhas_avaliacoes_feitas(
     return await avaliacoes_feitas(usuario['role'], usuario['email'], pagina, limite)
 
 @router.get('/admin/moderacao', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Todas as avaliações entre clientes e prestadores')
+@limiter.limit(LIMITE_LEITURA)
 async def admin_moderacao(
+    request: Request,
     origem: str | None = Query(None, pattern='^(cliente_para_prestador|prestador_para_cliente)$'),
     q: str | None = Query(None, max_length=100),
     nota: float | None = Query(None, ge=1, le=5),
@@ -191,7 +210,9 @@ async def admin_moderacao(
     return await listar_moderacao(origem, q, nota, pagina, limite)
 
 @router.delete('/admin/moderacao/{origem}/{avaliacao_id}', tags=['ADMIN'], status_code=status.HTTP_200_OK, summary='Excluir uma avaliação entre cliente e prestador')
+@limiter.limit(LIMITE_ESCRITA)
 async def admin_excluir_avaliacao(
+    request: Request,
     origem: str,
     avaliacao_id: str,
     usuario: dict = Depends(exigir_usuario('admin')),
@@ -203,31 +224,38 @@ async def admin_excluir_avaliacao(
     return {'excluida': True}
 
 @router.get('/', tags=['GET'], status_code=status.HTTP_200_OK, summary='Rota base do projeto')
-async def rota_base():
+@limiter.limit(LIMITE_PUBLICO)
+async def rota_base(request: Request, ):
     return {'Projeto': 'Hands - Marktplace de serviços'}
 
 @router.get('/ver_todos_clientes', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todos os clientes cadastrados')
-async def ver_todos_clientes(usuario: dict = Depends(exigir_usuario('admin'))):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_todos_clientes(request: Request, usuario: dict = Depends(exigir_usuario('admin'))):
     result = await listagem_clientes()
     return {'clientes': result}
 
 @router.get('/ver_todos_prestadores', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todos os prestadores cadastrados')
-async def ver_todos_prestadores(usuario: dict = Depends(exigir_usuario())):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_todos_prestadores(request: Request, usuario: dict = Depends(exigir_usuario())):
     result = await listagem_prestadores()
     return {'prestadores': result}
 
 @router.get("/total_clientes", tags=["GET"], status_code=status.HTTP_200_OK, summary='Ver total de clientes na plataforma')
-async def ver_total_cliente_api():
+@limiter.limit(LIMITE_PUBLICO)
+async def ver_total_cliente_api(request: Request, ):
     total = await total_clientes()
     return {"totalClientes": total}
 
 @router.get("/total_prestadores", tags=["GET"], status_code=status.HTTP_200_OK, summary='Ver total de prestadores na plataforma')
-async def ver_total_prestadores_api():
+@limiter.limit(LIMITE_PUBLICO)
+async def ver_total_prestadores_api(request: Request, ):
     total = await total_prestadores()
     return {"totalPrestadores": total}
 
 @router.get('/prestadores', tags=['GET'], status_code=status.HTTP_200_OK, summary='Buscar prestadores com filtros')
+@limiter.limit(LIMITE_LEITURA)
 async def buscar_prestadores_endpoint(
+    request: Request,
     q: str | None = Query(None, max_length=100),
     nome: str | None = Query(None, max_length=100),
     email: str | None = Query(None, max_length=100),
@@ -253,11 +281,14 @@ async def buscar_prestadores_endpoint(
     )
 
 @router.get('/prestadores/{id_prestador}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Perfil completo de um prestador')
-async def ver_prestador(id_prestador: str, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_prestador(request: Request, id_prestador: str, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
     return await detalhe_prestador(id_prestador, usuario.get('email'))
 
 @router.get('/clientes', tags=['GET'], status_code=status.HTTP_200_OK, summary='Buscar clientes com filtros')
+@limiter.limit(LIMITE_LEITURA)
 async def buscar_clientes_endpoint(
+    request: Request,
     q: str | None = Query(None, max_length=100),
     nome: str | None = Query(None, max_length=100),
     email: str | None = Query(None, max_length=100),
@@ -279,15 +310,19 @@ async def buscar_clientes_endpoint(
     )
 
 @router.get('/clientes/{id_cliente}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Perfil completo de um cliente')
-async def ver_cliente(id_cliente: str, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_cliente(request: Request, id_cliente: str, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
     return await detalhe_cliente(id_cliente, usuario.get('email'))
 
 @router.get('/prestador/perfil', tags=['GET'], status_code=status.HTTP_200_OK, summary='Dados do perfil do prestador logado')
-async def ver_perfil_prestador(usuario: dict = Depends(exigir_usuario('prestador'))):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_perfil_prestador(request: Request, usuario: dict = Depends(exigir_usuario('prestador'))):
     return await perfil_prestador(usuario['id'])
 
 @router.get('/prestador/avaliacoes', tags=['GET'], status_code=status.HTTP_200_OK, summary='Avaliações recebidas pelo prestador logado')
+@limiter.limit(LIMITE_LEITURA)
 async def ver_avaliacoes_do_prestador(
+    request: Request,
     pagina: int = Query(1, ge=1),
     limite: int = Query(10, ge=1, le=50),
     usuario: dict = Depends(exigir_usuario('prestador')),
@@ -295,73 +330,88 @@ async def ver_avaliacoes_do_prestador(
     return await avaliacoes_recebidas_prestador(usuario['email'], pagina, limite)
 
 @router.get('/favoritos', tags=['GET'], status_code=status.HTTP_200_OK, summary='Prestadores favoritos do cliente')
-async def ver_favoritos(usuario: dict = Depends(exigir_usuario('cliente'))):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_favoritos(request: Request, usuario: dict = Depends(exigir_usuario('cliente'))):
     return {'prestadores': await listar_favoritos(usuario['email'])}
 
 @router.get('/cliente/perfil', tags=['GET'], status_code=status.HTTP_200_OK, summary='Dados do perfil do cliente logado')
-async def ver_perfil_cliente(usuario: dict = Depends(exigir_usuario('cliente'))):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_perfil_cliente(request: Request, usuario: dict = Depends(exigir_usuario('cliente'))):
     return await perfil_cliente(usuario['id'])
 
 @router.get('/avaliar_hands/minha', tags=['GET'], status_code=status.HTTP_200_OK, summary='Minha avaliação do Hands')
-async def ver_minha_avaliacao_hands(usuario: dict = Depends(exigir_usuario('cliente','prestador'))):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_minha_avaliacao_hands(request: Request, usuario: dict = Depends(exigir_usuario('cliente','prestador'))):
     return {'avaliacao': await minha_avaliacao_hands(usuario['email'])}
 
 @router.get('/ver_avaliacoes_hands', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todas avaliações')
-async def ver_avaliacoes_hands(usuario: dict = Depends(exigir_usuario('admin'))):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_avaliacoes_hands(request: Request, usuario: dict = Depends(exigir_usuario('admin'))):
     result = await listagem_avaliacoes_hands()
     return {'avaliacoes': result}
 
 @router.get('/ver_avaliacoes_clientes', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todas avaliações clientes')
-async def ver_avaliacoes_clientes(usuario: dict = Depends(exigir_usuario('admin'))):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_avaliacoes_clientes(request: Request, usuario: dict = Depends(exigir_usuario('admin'))):
     result = await listagem_avaliacoes_clientes()
     return {'avaliacoes': result}
 
 @router.get('/ver_avaliacoes_prestadores', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver todas avaliações prestadores')
-async def ver_avaliacoes_prestadores(usuario: dict = Depends(exigir_usuario('admin'))):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_avaliacoes_prestadores(request: Request, usuario: dict = Depends(exigir_usuario('admin'))):
     result = await listagem_avaliacoes_prestadores()
     return {'avaliacoes': result}
 
 @router.get('/ver_minhas_avaliacoes_cliente/{email}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver avaliações recebidas (cliente)')
-async def ver_minhas_avaliacoes_cliente(email:str, usuario: dict = Depends(exigir_usuario())):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_minhas_avaliacoes_cliente(request: Request, email:str, usuario: dict = Depends(exigir_usuario())):
     result,total_avaliacoes = await ver_avaliacoes_recebidas('feedback_cliente',email)
     return {'avaliacoes_recebidas': result, 'total':total_avaliacoes}
 
 @router.get('/ver_minhas_avaliacoes_prestador/{email}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver avaliações recebidas (prestador)')
-async def ver_minhas_avaliacoes_prestador(email:str, usuario: dict = Depends(exigir_usuario())):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_minhas_avaliacoes_prestador(request: Request, email:str, usuario: dict = Depends(exigir_usuario())):
     result,total_avaliacoes = await ver_avaliacoes_recebidas('feedback_prestador',email)
     return {'avaliacoes_recebidas': result,'total':total_avaliacoes }
 
 @router.get('/ver_avaliacoes_preenchidas_cliente/{email}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver avaliações feitas (cliente)')
-async def ver_avaliacoes_preenchidas_cliente(email:str, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_avaliacoes_preenchidas_cliente(request: Request, email:str, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
     garantir_dono_ou_admin(usuario, email)
     result,total_avaliacoes = await ver_avaliacoes_entregues('feedback_cliente',email)
     return {'avaliacoes_recebidas': result, 'total':total_avaliacoes}
 
 @router.get('/ver_avaliacoes_preenchidas_prestador/{email}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Ver avaliações recebidas (prestador)')
-async def ver_avaliacoes_preenchidas_prestador(email:str, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
+@limiter.limit(LIMITE_LEITURA)
+async def ver_avaliacoes_preenchidas_prestador(request: Request, email:str, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
     garantir_dono_ou_admin(usuario, email)
     result,total_avaliacoes = await ver_avaliacoes_entregues('feedback_prestador',email)
     return {'avaliacoes_recebidas': result,'total':total_avaliacoes }
 
 @router.get('/landing/estatisticas', tags=['GET'], status_code=status.HTTP_200_OK, summary='Estatísticas da página inicial')
-async def landing_estatisticas():
+@limiter.limit(LIMITE_PUBLICO)
+async def landing_estatisticas(request: Request, ):
     return await estatisticas_landing()
 
 @router.get('/landing/categorias', tags=['GET'], status_code=status.HTTP_200_OK, summary='Categorias mais populares da página inicial')
-async def landing_categorias():
+@limiter.limit(LIMITE_PUBLICO)
+async def landing_categorias(request: Request, ):
     result = await categorias_populares()
     return {'categorias': result}
 
 @router.get('/landing/prestadores_destaque', tags=['GET'], status_code=status.HTTP_200_OK, summary='Prestadores em destaque da página inicial')
-async def landing_prestadores_destaque():
+@limiter.limit(LIMITE_PUBLICO)
+async def landing_prestadores_destaque(request: Request, ):
     result = await prestadores_destaque()
     return {'prestadores': result}
 
 @router.get('/landing/avaliacoes_hands', tags=['GET'], status_code=status.HTTP_200_OK, summary='Resumo e últimas avaliações do Hands para a página inicial')
-async def landing_avaliacoes_hands():
+@limiter.limit(LIMITE_PUBLICO)
+async def landing_avaliacoes_hands(request: Request, ):
     return await avaliacoes_hands_landing()
 
 @router.get('/foto/{papel}/{id_usuario}', tags=['GET'], status_code=status.HTTP_200_OK, summary='Foto de perfil de cliente ou prestador')
+@limiter.limit(LIMITE_PUBLICO)
 async def ver_foto(papel: str, id_usuario: str, request: Request):
     if papel == 'cliente':
         await get_token_payload(await obter_token_do_cookie(request))
@@ -372,7 +422,9 @@ async def ver_foto(papel: str, id_usuario: str, request: Request):
 
 # Rotas POST
 @router.post('/cadastrar_cliente', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Cadastro de clientes')
+@limiter.limit(LIMITE_CADASTRO)
 async def cadastro_cliente(
+    request: Request,
     response: Response,
     tarefas: BackgroundTasks,
     nome: str = Form(..., min_length=1),
@@ -405,7 +457,9 @@ async def cadastro_cliente(
     return {'message': f'Sucesso ao cadastrar o cliente: {nome}', 'id': resultado['id'], 'role': 'cliente'}
 
 @router.post('/cadastrar_prestador', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Cadastro de prestador')
+@limiter.limit(LIMITE_CADASTRO)
 async def cadastro_prestador(
+    request: Request,
     response: Response,
     tarefas: BackgroundTasks,
     nome: str = Form(..., min_length=1),
@@ -458,7 +512,8 @@ async def cadastro_prestador(
     return {'message': f'Sucesso ao cadastrar o prestador: {nome}', 'id': resultado['id'], 'role': 'prestador'}
 
 @router.post('/foto', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Enviar ou trocar a foto do usuário logado')
-async def enviar_foto(foto: UploadFile = File(...), usuario: dict = Depends(exigir_usuario('cliente','prestador'))):
+@limiter.limit(LIMITE_UPLOAD)
+async def enviar_foto(request: Request, foto: UploadFile = File(...), usuario: dict = Depends(exigir_usuario('cliente','prestador'))):
     foto_pronta = await preparar_foto(foto)
     if foto_pronta is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Envie uma imagem válida (JPG, PNG ou WEBP).")
@@ -466,32 +521,37 @@ async def enviar_foto(foto: UploadFile = File(...), usuario: dict = Depends(exig
     return {'message': 'Foto atualizada com sucesso.'}
 
 @router.post("/avaliar_hands", tags=["POST"], summary="Avaliar o hands", status_code=status.HTTP_201_CREATED)
-async def avaliar_hands_endpoint(avaliar: Avaliacao, usuario: dict = Depends(exigir_usuario('cliente','prestador'))):
+@limiter.limit(LIMITE_ESCRITA)
+async def avaliar_hands_endpoint(request: Request, avaliar: Avaliacao, usuario: dict = Depends(exigir_usuario('cliente','prestador'))):
     res = await avaliar_hands(usuario['email'],avaliar.facilidade, avaliar.qualidade, avaliar.confiabilidade ,avaliar.notaGeral, avaliar.mensagem)
     return {'id_resultado': str(res)}
 
 @router.post("/avaliar_prestador", tags=["POST"], summary="Avaliar prestadores", status_code=status.HTTP_201_CREATED)
-async def avaliar_prestador(avaliar: AvaliacaoPessoas, usuario: dict = Depends(exigir_usuario('cliente'))):
+@limiter.limit(LIMITE_ESCRITA)
+async def avaliar_prestador(request: Request, avaliar: AvaliacaoPessoas, usuario: dict = Depends(exigir_usuario('cliente'))):
     if await prestador_col.find_one({'email': avaliar.para.strip()}, {'_id': 1}) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prestador não encontrado.")
     res = await avaliar_pessoas("feedback_prestador", usuario['email'], avaliar.para.strip(),  avaliar.nota, avaliar.mensagem.strip())
     return {'id_resultado': str(res)}
 
 @router.post("/avaliar_clientes", tags=["POST"], summary="Avaliar clientes", status_code=status.HTTP_201_CREATED)
-async def avaliar_clientes(avaliar: AvaliacaoPessoas, usuario: dict = Depends(exigir_usuario('prestador'))):
+@limiter.limit(LIMITE_ESCRITA)
+async def avaliar_clientes(request: Request, avaliar: AvaliacaoPessoas, usuario: dict = Depends(exigir_usuario('prestador'))):
     if await cliente_col.find_one({'email': avaliar.para.strip()}, {'_id': 1}) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente não encontrado.")
     res = await avaliar_pessoas("feedback_cliente", usuario['email'], avaliar.para.strip(),  avaliar.nota, avaliar.mensagem.strip())
     return {'id_resultado': str(res)}
 
 @router.post('/favoritos', tags=["POST"], status_code=status.HTTP_201_CREATED, summary='Favoritar prestador pelo e-mail')
-async def adicionar_favorito(favorito: Favorito, usuario: dict = Depends(exigir_usuario('cliente'))):
+@limiter.limit(LIMITE_ESCRITA)
+async def adicionar_favorito(request: Request, favorito: Favorito, usuario: dict = Depends(exigir_usuario('cliente'))):
     await favoritar(usuario['email'], favorito.email)
     return {'favorito': True}
 
 # Rotas PATCH
 @router.patch('/atualizar_cliente', tags=["PATCH"], status_code=status.HTTP_202_ACCEPTED, summary="Atualizando dados do cliente")
-async def atualizar_cliente(cliente: AtualizarCliente, tarefas: BackgroundTasks, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
+@limiter.limit(LIMITE_ALTERAR_CONTA)
+async def atualizar_cliente(request: Request, cliente: AtualizarCliente, tarefas: BackgroundTasks, response: Response, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
     if usuario['role'] != 'admin' and cliente.id != usuario['id']:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para acessar este recurso.")
     cliente_busca = await busca_especifica_cliente(cliente.id)
@@ -517,13 +577,16 @@ async def atualizar_cliente(cliente: AtualizarCliente, tarefas: BackgroundTasks,
     if cliente.informacoes is not None:
         await atualizar(collection_name,cliente.id, "informacoes", cliente.informacoes)
     if cliente.senha is not None:
-        await atualizar_senha(collection_name,cliente.id, cliente.senha)
+        nova_versao = await atualizar_senha(collection_name,cliente.id, cliente.senha)
+        if nova_versao and usuario['id'] == cliente.id and usuario['role'] == collection_name:
+            renovar_cookie_acesso(response, usuario['id'], collection_name, nova_versao, usuario['lembrar'])
         enviar_em_segundo_plano(tarefas, cliente_busca['email'], email_senha_alterada(cliente_busca.get('nome')))
     cliente_atualizado = await busca_especifica_cliente(cliente.id)
     return cliente_atualizado
 
 @router.patch('/atualizar_prestador', tags=["PATCH"], status_code=status.HTTP_202_ACCEPTED, summary="Atualizando dados do prestador")
-async def atualizar_prestador(prestador: AtualizarPrestador, tarefas: BackgroundTasks, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
+@limiter.limit(LIMITE_ALTERAR_CONTA)
+async def atualizar_prestador(request: Request, prestador: AtualizarPrestador, tarefas: BackgroundTasks, response: Response, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
     if usuario['role'] != 'admin' and prestador.id != usuario['id']:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para acessar este recurso.")
     prestador_busca = await busca_especifica_prestador(prestador.id)
@@ -555,7 +618,9 @@ async def atualizar_prestador(prestador: AtualizarPrestador, tarefas: Background
     if prestador.valor is not None:
         await atualizar(collection_name,prestador.id, "valor", prestador.valor)
     if prestador.senha is not None:
-        await atualizar_senha(collection_name,prestador.id, prestador.senha)
+        nova_versao = await atualizar_senha(collection_name,prestador.id, prestador.senha)
+        if nova_versao and usuario['id'] == prestador.id and usuario['role'] == collection_name:
+            renovar_cookie_acesso(response, usuario['id'], collection_name, nova_versao, usuario['lembrar'])
         enviar_em_segundo_plano(tarefas, prestador_busca['email'], email_senha_alterada(prestador_busca.get('nome')))
     if prestador.servicos is not None:
         await atualizar(collection_name,prestador.id, "servicos", [servico.strip() for servico in prestador.servicos if servico.strip()])
@@ -568,12 +633,14 @@ async def atualizar_prestador(prestador: AtualizarPrestador, tarefas: Background
 
 # Rotas DELETE
 @router.delete('/favoritos/{email_prestador}', tags=["DELETE"], status_code=status.HTTP_200_OK, summary='Remover prestador dos favoritos')
-async def remover_favorito(email_prestador: str, usuario: dict = Depends(exigir_usuario('cliente'))):
+@limiter.limit(LIMITE_ESCRITA)
+async def remover_favorito(request: Request, email_prestador: str, usuario: dict = Depends(exigir_usuario('cliente'))):
     await desfavoritar(usuario['email'], email_prestador)
     return {'favorito': False}
 
 @router.delete('/deletar_prestador/{email}', tags=["DELETE"], status_code=status.HTTP_204_NO_CONTENT, summary="Deletando prestador por email")
-async def deletar_prestador(email: str, tarefas: BackgroundTasks, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
+@limiter.limit(LIMITE_EXCLUIR_CONTA)
+async def deletar_prestador(request: Request, email: str, tarefas: BackgroundTasks, response: Response, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
     garantir_dono_ou_admin(usuario, email)
     try:
         alvo = await prestador_col.find_one({'email': email.strip()}, {'_id': 1, 'nome': 1})
@@ -581,6 +648,8 @@ async def deletar_prestador(email: str, tarefas: BackgroundTasks, usuario: dict 
         if alvo is not None:
             remover_foto('prestador', str(alvo['_id']))
         await favorito_col.delete_many({'prestador': email.strip()})
+        if usuario['role'] != 'admin':
+            limpar_cookie_acesso(response)
         if alvo is not None:
             enviar_em_segundo_plano(tarefas, email.strip(), email_conta_excluida(alvo.get('nome')))
         return resultado
@@ -594,7 +663,8 @@ async def deletar_prestador(email: str, tarefas: BackgroundTasks, usuario: dict 
         )
 
 @router.delete('/deletar_cliente/{email}', tags=["DELETE"], status_code=status.HTTP_204_NO_CONTENT, summary="Deletando cliente por email")
-async def deletar_cliente(email: str, tarefas: BackgroundTasks, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
+@limiter.limit(LIMITE_EXCLUIR_CONTA)
+async def deletar_cliente(request: Request, email: str, tarefas: BackgroundTasks, response: Response, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
     garantir_dono_ou_admin(usuario, email)
     try:
         alvo = await cliente_col.find_one({'email': email.strip()}, {'_id': 1, 'nome': 1})
@@ -602,6 +672,8 @@ async def deletar_cliente(email: str, tarefas: BackgroundTasks, usuario: dict = 
         if alvo is not None:
             remover_foto('cliente', str(alvo['_id']))
         await favorito_col.delete_many({'cliente': email.strip()})
+        if usuario['role'] != 'admin':
+            limpar_cookie_acesso(response)
         if alvo is not None:
             enviar_em_segundo_plano(tarefas, email.strip(), email_conta_excluida(alvo.get('nome')))
     except HTTPException:

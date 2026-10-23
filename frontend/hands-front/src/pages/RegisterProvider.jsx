@@ -11,17 +11,7 @@ import useAuth from '../hooks/useAuth'
 import { cadastroPrestador } from '../api/post/cadastro/cadastroPrestador'
 import { inicioPorPapel } from '../utils/rotasPorPapel'
 import { converterValor } from '../utils/formatadores'
-
-const servicos = [
-  'Eletricista',
-  'Encanador',
-  'Pintor',
-  'Diarista',
-  'Pedreiro',
-  'Jardineiro',
-  'Técnico de TI',
-  'Montador de Móveis',
-]
+import { SERVICOS } from '../utils/servicos'
 
 export default function RegisterProvider() {
   const navigate = useNavigate()
@@ -123,7 +113,7 @@ export default function RegisterProvider() {
               className={`w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-xl outline-none text-sm appearance-none focus:border-[#5B2EFF] ${form.servico ? 'text-gray-800' : 'text-gray-400'}`}
             >
               <option value="">Selecione o serviço que você oferece</option>
-              {servicos.map((s) => (
+              {SERVICOS.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>

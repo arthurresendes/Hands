@@ -96,5 +96,5 @@ async def redefinir_senha(id_solicitacao: str, senha_nova: str):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='A nova senha deve ser diferente da senha anterior.',
         )
-    await colecao.update_one({'_id': usuario['_id']}, {'$set': {'senha': gerar_senha_hash(senha_nova)}})
+    await colecao.update_one({'_id': usuario['_id']}, {'$set': {'senha': gerar_senha_hash(senha_nova)}, '$inc': {'sessao_versao': 1}})
     await recuperacao_col.delete_one({'_id': oid})

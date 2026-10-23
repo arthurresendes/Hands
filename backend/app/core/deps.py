@@ -60,7 +60,13 @@ async def usuario_documento(payload: dict = Depends(get_token_payload)) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário não encontrado.",
         )
+    if payload.get("sv", 0) != documento.pop("sessao_versao", 0):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sua sessão expirou. Entre novamente para continuar.",
+        )
     documento["id"] = str(documento.pop("_id"))
+    documento["lembrar"] = bool(payload.get("lem", False))
     documento["role"] = payload["role"]
     return documento
 

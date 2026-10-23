@@ -3,10 +3,12 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pymongo.errors import PyMongoError
+from slowapi.errors import RateLimitExceeded
 
 logger = logging.getLogger(__name__)
 
 MENSAGEM_INDISPONIVEL = 'Estamos com uma instabilidade no momento. Tente novamente em instantes.'
+MENSAGEM_LIMITE = 'Muitas tentativas em pouco tempo. Aguarde um instante e tente novamente.'
 MENSAGEM_INESPERADO = 'Algo deu errado do nosso lado. Tente novamente em instantes.'
 
 ROTULOS = {
@@ -57,7 +59,11 @@ async def tratar_inesperado(request: Request, exc: Exception):
     logger.exception('Erro inesperado em %s', request.url.path)
     return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={'detail': MENSAGEM_INESPERADO})
 
+async def tratar_limite(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(status_code=status.HTTP_429_TOO_MANY_REQUESTS, content={'detail': MENSAGEM_LIMITE}, headers={'Retry-After': '60'})
+
 def registrar_tratadores(app: FastAPI):
+    app.add_exception_handler(RateLimitExceeded, tratar_limite)
     app.add_exception_handler(RequestValidationError, tratar_validacao)
     app.add_exception_handler(PyMongoError, tratar_banco)
     app.add_exception_handler(Exception, tratar_inesperado)
