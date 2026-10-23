@@ -1,60 +1,87 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { useState } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
+import Aviso from '../components/Aviso'
+import BotaoPrimario from '../components/BotaoPrimario'
 import FormField from '../components/FormField'
 import { LockIcon } from '../components/icons'
-
-const roleConfig = {
-  cliente: {
-    badge: 'Recuperar senha',
-    title: 'Quase lá!',
-    subtitle: 'Defina uma nova senha para voltar a acessar sua conta de cliente.',
-    highlights: ['Use uma senha forte e única', 'Você poderá entrar em seguida'],
-    loginPath: '/login',
-  },
-  prestador: {
-    badge: 'Recuperar senha',
-    title: 'Quase lá!',
-    subtitle: 'Defina uma nova senha para voltar a acessar sua conta de profissional.',
-    highlights: ['Use uma senha forte e única', 'Você poderá entrar em seguida'],
-    loginPath: '/login/prestador',
-  },
-}
+import useRecuperacaoSenha from '../hooks/useRecuperacaoSenha'
+import { redefinirSenhaRecuperacao } from '../api/post/recuperacao/redefinirSenhaRecuperacao'
+import { SENHA_MINIMA } from '../utils/recuperacaoSenha'
 
 export default function ForgotPasswordReset() {
   const navigate = useNavigate()
-  const { role } = useParams()
-  const config = roleConfig[role] || roleConfig.cliente
+  const { config, verificado } = useRecuperacaoSenha()
+  const [senha, setSenha] = useState('')
+  const [confirmar, setConfirmar] = useState('')
+  const [erro, setErro] = useState('')
+  const [enviando, setEnviando] = useState(false)
 
-  const handleSubmit = (e) => {
+  if (!verificado) return <Navigate to={config.emailPath} replace />
+
+  const redefinir = async (e) => {
     e.preventDefault()
-    navigate(config.loginPath)
+    setErro('')
+    if (senha !== confirmar) {
+      setErro('As senhas não conferem.')
+      return
+    }
+    setEnviando(true)
+    try {
+      await redefinirSenhaRecuperacao(senha)
+      navigate(config.loginPath, { state: { senhaRedefinida: true }, replace: true })
+    } catch (error) {
+      setErro(error.message)
+    } finally {
+      setEnviando(false)
+    }
   }
 
   return (
     <AuthLayout
-      badge={config.badge}
-      title={config.title}
-      subtitle={config.subtitle}
-      highlights={config.highlights}
+      badge="Recuperar senha"
+      title="Quase lá!"
+      subtitle={`Defina uma nova senha para voltar a acessar sua conta de ${config.rotulo}.`}
+      highlights={['Use uma senha forte e única', 'A nova senha deve ser diferente da anterior']}
     >
       <h1 className="text-2xl font-black text-[#1F2937] mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>
         Criar nova senha
       </h1>
-      <p className="text-sm text-gray-500 mb-8">
-        Escolha uma nova senha para a sua conta.
-      </p>
+      <p className="text-sm text-gray-500 mb-8">Escolha uma nova senha para a sua conta.</p>
 
-      <form className="space-y-5" onSubmit={handleSubmit}>
-        <FormField required label="Nova senha" type="password" placeholder="Digite a nova senha" Icon={LockIcon} />
-        <FormField required label="Confirmar nova senha" type="password" placeholder="Repita a nova senha" Icon={LockIcon} />
+      <form className="space-y-5" onSubmit={redefinir}>
+        <FormField
+          required
+          label="Nova senha"
+          type="password"
+          placeholder={`Mínimo de ${SENHA_MINIMA} caracteres`}
+          Icon={LockIcon}
+          name="senha"
+          autoComplete="new-password"
+          minLength={SENHA_MINIMA}
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+        />
+        <FormField
+          required
+          label="Confirmar nova senha"
+          type="password"
+          placeholder="Repita a nova senha"
+          Icon={LockIcon}
+          name="confirmar"
+          autoComplete="new-password"
+          value={confirmar}
+          onChange={(e) => setConfirmar(e.target.value)}
+        />
 
-        <button
-          type="submit"
-          className="w-full bg-[#5B2EFF] hover:bg-[#4A25CC] text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
-          style={{ fontFamily: 'Outfit, sans-serif' }}
-        >
-          Redefinir senha
-        </button>
+        <Aviso>{erro}</Aviso>
+        {erro.includes('expirou') && (
+          <button type="button" onClick={() => navigate(config.emailPath)} className="text-sm text-[#5B2EFF] font-semibold">
+            Solicitar um novo código
+          </button>
+        )}
+
+        <BotaoPrimario carregando={enviando} textoCarregando="Salvando...">Redefinir senha</BotaoPrimario>
       </form>
     </AuthLayout>
   )

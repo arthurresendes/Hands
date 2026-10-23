@@ -3,6 +3,7 @@ import LinkTermos from '../components/LinkTermos'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
+import BotaoPrimario from '../components/BotaoPrimario'
 import FormField from '../components/FormField'
 import FotoInput from '../components/FotoInput'
 import { UserIcon, MailIcon, IdCardIcon, LockIcon, PinIcon, BriefcaseIcon, CoinIcon, ChatIcon } from '../components/icons'
@@ -157,14 +158,7 @@ export default function RegisterProvider() {
 
         {erro && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-3">{erro}</p>}
 
-        <button
-          type="submit"
-          disabled={enviando}
-          className="w-full bg-[#5B2EFF] hover:bg-[#4A25CC] disabled:opacity-60 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
-          style={{ fontFamily: 'Outfit, sans-serif' }}
-        >
-          {enviando ? 'Criando conta...' : 'Criar conta'}
-        </button>
+        <BotaoPrimario carregando={enviando} textoCarregando="Criando conta...">Criar conta</BotaoPrimario>
       </form>
 
       <p className="text-center text-sm text-gray-500 mt-8">

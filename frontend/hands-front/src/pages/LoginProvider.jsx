@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
+import Aviso from '../components/Aviso'
+import BotaoPrimario from '../components/BotaoPrimario'
 import FormField from '../components/FormField'
 import { MailIcon, LockIcon } from '../components/icons'
 import useAuth from '../hooks/useAuth'
@@ -8,6 +10,7 @@ import { inicioPorPapel } from '../utils/rotasPorPapel'
 
 export default function LoginProvider() {
   const navigate = useNavigate()
+  const { state } = useLocation()
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -40,6 +43,10 @@ export default function LoginProvider() {
       </h1>
       <p className="text-sm text-gray-500 mb-8">Acesse seu painel de prestador de serviços</p>
 
+      {state?.senhaRedefinida && (
+        <div className="mb-5"><Aviso tipo="sucesso">Senha redefinida com sucesso. Entre com a nova senha.</Aviso></div>
+      )}
+
       <form className="space-y-5" onSubmit={handleLogin}>
         <FormField label="E-mail" type="email" placeholder="seuemail@exemplo.com" Icon={MailIcon} name="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <FormField label="Senha" type="password" placeholder="Digite sua senha" Icon={LockIcon} name="senha" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
@@ -54,14 +61,7 @@ export default function LoginProvider() {
 
         {erro && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-3">{erro}</p>}
 
-        <button
-          type="submit"
-          disabled={enviando}
-          className="w-full bg-[#5B2EFF] hover:bg-[#4A25CC] disabled:opacity-60 text-white font-bold py-3.5 rounded-xl text-sm transition-colors"
-          style={{ fontFamily: 'Outfit, sans-serif' }}
-        >
-          {enviando ? 'Entrando...' : 'Entrar'}
-        </button>
+        <BotaoPrimario carregando={enviando} textoCarregando="Entrando...">Entrar</BotaoPrimario>
       </form>
 
       <p className="text-center text-sm text-gray-500 mt-8">
