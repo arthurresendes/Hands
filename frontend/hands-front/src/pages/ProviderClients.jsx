@@ -5,7 +5,8 @@ import ClienteCard from '../components/ClienteCard'
 import Aviso from '../components/Aviso'
 import { SearchIcon, PinIcon, FilterIcon } from '../components/icons'
 import { buscarClientes } from '../api/get/listagem/buscarClientes'
-import { buscarPerfilPrestador } from '../api/get/detalhe/perfilPrestador'
+import useEstadoPainel from '../hooks/useEstadoPainel'
+import usePerfil from '../hooks/usePerfil'
 
 const FILTROS_INICIAIS = {
   q: '',
@@ -21,21 +22,18 @@ const classeCampo = 'w-full px-4 py-3 border border-gray-200 rounded-xl text-sm 
 
 export default function ProviderClients() {
   const navigate = useNavigate()
-  const [form, setForm] = useState(FILTROS_INICIAIS)
-  const [aplicado, setAplicado] = useState(FILTROS_INICIAIS)
-  const [pagina, setPagina] = useState(1)
-  const [painelAberto, setPainelAberto] = useState(false)
-  const [resultado, setResultado] = useState(null)
+  const { perfil } = usePerfil()
+  const [form, setForm] = useEstadoPainel('prestador.clientes.form', FILTROS_INICIAIS)
+  const [aplicado, setAplicado] = useEstadoPainel('prestador.clientes.aplicado', FILTROS_INICIAIS)
+  const [pagina, setPagina] = useEstadoPainel('prestador.clientes.pagina', 1)
+  const [painelAberto, setPainelAberto] = useEstadoPainel('prestador.clientes.painel', false)
+  const [resultado, setResultado] = useEstadoPainel('prestador.clientes.resultado', null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
 
   useEffect(() => {
-    buscarPerfilPrestador()
-      .then((perfil) => {
-        if (perfil.cep) setForm((atual) => ({ ...atual, cep: atual.cep || perfil.cep }))
-      })
-      .catch(() => {})
-  }, [])
+    if (perfil?.cep) setForm((atual) => (atual.cep ? atual : { ...atual, cep: perfil.cep }))
+  }, [perfil, setForm])
 
   useEffect(() => {
     let ativo = true
@@ -48,7 +46,7 @@ export default function ProviderClients() {
     return () => {
       ativo = false
     }
-  }, [aplicado, pagina])
+  }, [aplicado, pagina, setResultado])
 
   const alterar = (e) => {
     const { name, type, checked, value } = e.target

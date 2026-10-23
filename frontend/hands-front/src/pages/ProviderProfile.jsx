@@ -1,5 +1,5 @@
 import { mensagemIdade, propsCampoIdade } from '../utils/validacoes'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ProviderLayout from '../components/ProviderLayout'
 import FormField from '../components/FormField'
@@ -8,8 +8,8 @@ import AlterarSenha from '../components/AlterarSenha'
 import ExcluirConta from '../components/ExcluirConta'
 import Aviso from '../components/Aviso'
 import useAuth from '../hooks/useAuth'
+import usePerfil from '../hooks/usePerfil'
 import { UserIcon, MailIcon, IdCardIcon, PinIcon, ChatIcon, CoinIcon } from '../components/icons'
-import { buscarPerfilPrestador } from '../api/get/detalhe/perfilPrestador'
 import { atualizarDadosPrestador } from '../api/patch/atualizar/atualizarDadosPrestador'
 import { deletarPrestador } from '../api/delete/deletarPrestador'
 import { SERVICOS } from '../utils/servicos'
@@ -33,34 +33,26 @@ const FORM_INICIAL = {
 export default function ProviderProfile() {
   const navigate = useNavigate()
   const { usuario, recarregar, logout } = useAuth()
-  const [perfil, setPerfil] = useState(null)
+  const { perfil, carregando, erro: erroPerfil, recarregar: recarregarPerfil } = usePerfil()
   const [form, setForm] = useState(FORM_INICIAL)
-  const [carregando, setCarregando] = useState(true)
   const [avisoDados, setAvisoDados] = useState(null)
   const [avisoGeral, setAvisoGeral] = useState(null)
   const [salvando, setSalvando] = useState(false)
 
-  const carregar = useCallback(async () => {
-    const dados = await buscarPerfilPrestador()
-    setPerfil(dados)
-    setForm({
-      nome: dados.nome ?? '',
-      celular: dados.celular ?? '',
-      idade: dados.idade ?? '',
-      cep: dados.cep ?? '',
-      informacoes: dados.informacoes ?? '',
-      servicos: dados.servicos ?? [],
-      valor: formatarMoeda(dados.valor),
-      idiomas: (dados.idiomas ?? []).join(', '),
-      certificacoes: (dados.certificados ?? []).join('\n'),
-    })
-  }, [])
-
   useEffect(() => {
-    carregar()
-      .catch((error) => setAvisoGeral({ tipo: 'erro', texto: error.message }))
-      .finally(() => setCarregando(false))
-  }, [carregar])
+    if (!perfil) return
+    setForm({
+      nome: perfil.nome ?? '',
+      celular: perfil.celular ?? '',
+      idade: perfil.idade ?? '',
+      cep: perfil.cep ?? '',
+      informacoes: perfil.informacoes ?? '',
+      servicos: perfil.servicos ?? [],
+      valor: formatarMoeda(perfil.valor),
+      idiomas: (perfil.idiomas ?? []).join(', '),
+      certificacoes: (perfil.certificados ?? []).join('\n'),
+    })
+  }, [perfil])
 
   const alterar = (e) => setForm((atual) => ({ ...atual, [e.target.name]: e.target.value }))
 
@@ -104,7 +96,7 @@ export default function ProviderProfile() {
       }
       if (soDigitos(form.cep) !== soDigitos(perfil.cep)) alteracoes.cep = form.cep.trim()
       await atualizarDadosPrestador(alteracoes)
-      await Promise.all([carregar(), recarregar()])
+      await Promise.all([recarregarPerfil(), recarregar()])
       setAvisoDados({ tipo: 'sucesso', texto: 'Dados atualizados com sucesso.' })
     } catch (error) {
       setAvisoDados({ tipo: 'erro', texto: error.message })
@@ -133,11 +125,11 @@ export default function ProviderProfile() {
         <p className="text-gray-500 mt-1">Gerencie seu perfil profissional e seus dados</p>
       </div>
 
-      {avisoGeral && <div className="mb-6"><Aviso tipo={avisoGeral.tipo}>{avisoGeral.texto}</Aviso></div>}
+      {(avisoGeral || erroPerfil) && <div className="mb-6"><Aviso tipo={avisoGeral?.tipo}>{avisoGeral?.texto ?? erroPerfil}</Aviso></div>}
 
-      {carregando && <div className="bg-white rounded-2xl h-96 animate-pulse" />}
+      {carregando && !perfil && <div className="bg-white rounded-2xl h-96 animate-pulse" />}
 
-      {!carregando && perfil && (
+      {perfil && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white rounded-2xl border border-gray-100 p-6 h-fit">
             <div className="flex flex-col items-center text-center">

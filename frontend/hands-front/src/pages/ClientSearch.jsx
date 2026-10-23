@@ -7,7 +7,8 @@ import { SearchIcon, PinIcon, FilterIcon } from '../components/icons'
 import { buscarPrestadores } from '../api/get/listagem/buscarPrestadores'
 import { favoritarPrestador } from '../api/post/cadastro/cadastroFavorito'
 import { desfavoritarPrestador } from '../api/delete/deletarFavorito'
-import { buscarPerfilCliente } from '../api/get/detalhe/perfilCliente'
+import useEstadoPainel from '../hooks/useEstadoPainel'
+import usePerfil from '../hooks/usePerfil'
 
 const servicos = ['Eletricista', 'Encanador', 'Pintor', 'Diarista', 'Pedreiro', 'Jardineiro', 'Técnico de TI', 'Montador']
 
@@ -29,21 +30,18 @@ const classeCampo = 'w-full px-4 py-3 border border-gray-200 rounded-xl text-sm 
 
 export default function ClientSearch() {
   const navigate = useNavigate()
-  const [form, setForm] = useState(FILTROS_INICIAIS)
-  const [aplicado, setAplicado] = useState(FILTROS_INICIAIS)
-  const [pagina, setPagina] = useState(1)
-  const [painelAberto, setPainelAberto] = useState(false)
-  const [resultado, setResultado] = useState(null)
+  const { perfil } = usePerfil()
+  const [form, setForm] = useEstadoPainel('cliente.busca.form', FILTROS_INICIAIS)
+  const [aplicado, setAplicado] = useEstadoPainel('cliente.busca.aplicado', FILTROS_INICIAIS)
+  const [pagina, setPagina] = useEstadoPainel('cliente.busca.pagina', 1)
+  const [painelAberto, setPainelAberto] = useEstadoPainel('cliente.busca.painel', false)
+  const [resultado, setResultado] = useEstadoPainel('cliente.busca.resultado', null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
 
   useEffect(() => {
-    buscarPerfilCliente()
-      .then((perfil) => {
-        if (perfil.cep) setForm((atual) => ({ ...atual, cep: atual.cep || perfil.cep }))
-      })
-      .catch(() => {})
-  }, [])
+    if (perfil?.cep) setForm((atual) => (atual.cep ? atual : { ...atual, cep: perfil.cep }))
+  }, [perfil, setForm])
 
   useEffect(() => {
     let ativo = true
@@ -56,7 +54,7 @@ export default function ClientSearch() {
     return () => {
       ativo = false
     }
-  }, [aplicado, pagina])
+  }, [aplicado, pagina, setResultado])
 
   const alterar = (e) => {
     const { name, type, checked, value } = e.target

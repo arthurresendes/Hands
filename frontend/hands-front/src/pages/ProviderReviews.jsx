@@ -3,13 +3,14 @@ import ProviderLayout from '../components/ProviderLayout'
 import Avatar from '../components/Avatar'
 import Estrelas from '../components/Estrelas'
 import Aviso from '../components/Aviso'
+import useEstadoPainel from '../hooks/useEstadoPainel'
 import { UserIcon } from '../components/icons'
 import { listarAvaliacoesRecebidas } from '../api/get/avaliacao/avaliacoesRecebidasPrestador'
 import { tempoDesde, textoAvaliacoes } from '../utils/formatadores'
 
 export default function ProviderReviews() {
-  const [pagina, setPagina] = useState(1)
-  const [dados, setDados] = useState(null)
+  const [pagina, setPagina] = useEstadoPainel('prestador.avaliacoes.pagina', 1)
+  const [dados, setDados] = useEstadoPainel('prestador.avaliacoes.dados', null)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState('')
 
@@ -23,7 +24,7 @@ export default function ProviderReviews() {
     return () => {
       ativo = false
     }
-  }, [pagina])
+  }, [pagina, setDados])
 
   const resumo = dados?.resumo
   const temAvaliacoes = resumo?.total > 0

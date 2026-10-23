@@ -5,6 +5,7 @@ import Aviso from '../components/Aviso'
 import Estrelas from '../components/Estrelas'
 import Paginacao from '../components/Paginacao'
 import { SearchIcon, DownloadIcon, UserIcon, BriefcaseIcon } from '../components/icons'
+import useEstadoPainel from '../hooks/useEstadoPainel'
 import useListaPaginada from '../hooks/useListaPaginada'
 import { listarAvaliacoesHandsAdmin } from '../api/get/admin/listagemAvaliacoesHandsAdmin'
 import { exportarAvaliacoesHandsAdmin } from '../api/get/admin/exportarAvaliacoesHandsAdmin'
@@ -16,6 +17,7 @@ const ABAS = [
   { rotulo: 'Prestador', papel: 'prestador' },
 ]
 
+const FILTROS_INICIAIS = { q: '', nota: '' }
 const NOTAS = ['5', '4.5', '4', '3.5', '3', '2.5', '2', '1.5', '1']
 
 const ROTULO = { singular: 'avaliação', plural: 'avaliações' }
@@ -25,16 +27,16 @@ const classeCampo = 'w-full px-4 py-3 border border-gray-200 rounded-xl text-sm 
 const formatarNota = (valor) => Number(valor).toFixed(1)
 
 export default function AdminReviews() {
-  const [papel, setPapel] = useState('')
-  const [form, setForm] = useState({ q: '', nota: '' })
-  const [aplicado, setAplicado] = useState({ q: '', nota: '' })
-  const [pagina, setPagina] = useState(1)
+  const [papel, setPapel] = useEstadoPainel('admin.avaliacoes.papel', '')
+  const [form, setForm] = useEstadoPainel('admin.avaliacoes.form', FILTROS_INICIAIS)
+  const [aplicado, setAplicado] = useEstadoPainel('admin.avaliacoes.aplicado', FILTROS_INICIAIS)
+  const [pagina, setPagina] = useEstadoPainel('admin.avaliacoes.pagina', 1)
   const [exportando, setExportando] = useState(false)
   const [erroAcao, setErroAcao] = useState('')
 
   const filtros = useMemo(() => ({ ...aplicado, papel }), [aplicado, papel])
   const carregar = useCallback((parametros) => listarAvaliacoesHandsAdmin(parametros), [])
-  const { dados, carregando, erro } = useListaPaginada(carregar, filtros, pagina)
+  const { dados, carregando, erro } = useListaPaginada(carregar, filtros, pagina, 'admin.avaliacoes')
 
   const trocarAba = (novoPapel) => {
     setPapel(novoPapel)

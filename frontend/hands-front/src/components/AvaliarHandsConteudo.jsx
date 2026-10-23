@@ -4,9 +4,9 @@ import Estrelas from './Estrelas'
 import SeletorEstrelas from './SeletorEstrelas'
 import { SendIcon } from './icons'
 import { minhaAvaliacaoHands } from '../api/get/avaliacao/minhaAvaliacaoHands'
-import { buscarPerfilCliente } from '../api/get/detalhe/perfilCliente'
-import { buscarPerfilPrestador } from '../api/get/detalhe/perfilPrestador'
 import { cadastroAvaliacaoHands } from '../api/post/cadastro/cadastroAvaliacaoHands'
+import useEstadoPainel from '../hooks/useEstadoPainel'
+import usePerfil from '../hooks/usePerfil'
 import { getAvaliacoesHands } from '../services/landing'
 import { tempoDesde, textoAvaliacoes } from '../utils/formatadores'
 
@@ -22,12 +22,10 @@ const TEXTOS = {
   cliente: {
     placeholder: 'Conte como foi sua experiência usando o Hands...',
     rotuloFeitas: 'Suas avaliações a profissionais',
-    carregarPerfil: buscarPerfilCliente,
   },
   prestador: {
     placeholder: 'Conte como foi sua experiência oferecendo serviços no Hands...',
     rotuloFeitas: 'Suas avaliações a clientes',
-    carregarPerfil: buscarPerfilPrestador,
   },
 }
 
@@ -36,8 +34,8 @@ export default function AvaliarHandsConteudo({ papel }) {
   const [notas, setNotas] = useState(NOTAS_INICIAIS)
   const [mensagem, setMensagem] = useState('')
   const [minha, setMinha] = useState(null)
-  const [resumo, setResumo] = useState(null)
-  const [perfil, setPerfil] = useState(null)
+  const [resumo, setResumo] = useEstadoPainel('avaliarHands.resumo', null)
+  const { perfil } = usePerfil()
   const [enviando, setEnviando] = useState(false)
   const [aviso, setAviso] = useState(null)
 
@@ -58,8 +56,7 @@ export default function AvaliarHandsConteudo({ papel }) {
   useEffect(() => {
     carregarMinha().catch((error) => setAviso({ tipo: 'erro', texto: error.message }))
     getAvaliacoesHands().then((dados) => setResumo(dados.resumo)).catch(() => {})
-    textos.carregarPerfil().then(setPerfil).catch(() => {})
-  }, [carregarMinha, textos])
+  }, [carregarMinha, setResumo])
 
   const definirNota = (chave) => (valor) => setNotas((atual) => ({ ...atual, [chave]: valor }))
 

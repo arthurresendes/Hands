@@ -6,6 +6,7 @@ import Aviso from '../components/Aviso'
 import ModalConfirmacao from '../components/ModalConfirmacao'
 import Paginacao from '../components/Paginacao'
 import { SearchIcon, FilterIcon, DownloadIcon, EyeIcon, TrashIcon, UserIcon } from '../components/icons'
+import useEstadoPainel from '../hooks/useEstadoPainel'
 import useListaPaginada from '../hooks/useListaPaginada'
 import { listarClientesAdmin } from '../api/get/admin/listagemClientesAdmin'
 import { exportarClientesAdmin } from '../api/get/admin/exportarClientesAdmin'
@@ -26,17 +27,17 @@ const ROTULO = { singular: 'cliente', plural: 'clientes' }
 
 export default function AdminClients() {
   const navigate = useNavigate()
-  const [form, setForm] = useState(FILTROS_INICIAIS)
-  const [aplicado, setAplicado] = useState(FILTROS_INICIAIS)
-  const [pagina, setPagina] = useState(1)
-  const [painelAberto, setPainelAberto] = useState(false)
+  const [form, setForm] = useEstadoPainel('admin.clientes.form', FILTROS_INICIAIS)
+  const [aplicado, setAplicado] = useEstadoPainel('admin.clientes.aplicado', FILTROS_INICIAIS)
+  const [pagina, setPagina] = useEstadoPainel('admin.clientes.pagina', 1)
+  const [painelAberto, setPainelAberto] = useEstadoPainel('admin.clientes.painel', false)
   const [exportando, setExportando] = useState(false)
   const [erroAcao, setErroAcao] = useState('')
   const [alvo, setAlvo] = useState(null)
   const [excluindo, setExcluindo] = useState(false)
   const [erroExclusao, setErroExclusao] = useState('')
   const carregar = useCallback((filtros) => listarClientesAdmin(filtros), [])
-  const { dados, carregando, erro, recarregar } = useListaPaginada(carregar, aplicado, pagina)
+  const { dados, carregando, erro, recarregar } = useListaPaginada(carregar, aplicado, pagina, 'admin.clientes')
 
   const alterar = (e) => setForm((atual) => ({ ...atual, [e.target.name]: e.target.value }))
 

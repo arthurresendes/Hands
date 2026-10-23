@@ -1,5 +1,5 @@
 import { mensagemIdade, propsCampoIdade } from '../utils/validacoes'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ClientLayout from '../components/ClientLayout'
 import FormField from '../components/FormField'
@@ -8,8 +8,8 @@ import AlterarSenha from '../components/AlterarSenha'
 import ExcluirConta from '../components/ExcluirConta'
 import Aviso from '../components/Aviso'
 import useAuth from '../hooks/useAuth'
+import usePerfil from '../hooks/usePerfil'
 import { UserIcon, MailIcon, IdCardIcon, PinIcon, ChatIcon } from '../components/icons'
-import { buscarPerfilCliente } from '../api/get/detalhe/perfilCliente'
 import { atualizarDadosClientes } from '../api/patch/atualizar/atualizarDadosCliente'
 import { deletarCliente } from '../api/delete/deletarCliente'
 import { anoDe } from '../utils/formatadores'
@@ -19,30 +19,22 @@ const soDigitos = (texto) => (texto ?? '').replace(/\D/g, '')
 export default function ClientProfile() {
   const navigate = useNavigate()
   const { usuario, recarregar, logout } = useAuth()
-  const [perfil, setPerfil] = useState(null)
+  const { perfil, carregando, erro: erroPerfil, recarregar: recarregarPerfil } = usePerfil()
   const [form, setForm] = useState({ nome: '', celular: '', idade: '', cep: '', informacoes: '' })
-  const [carregando, setCarregando] = useState(true)
   const [avisoDados, setAvisoDados] = useState(null)
   const [avisoGeral, setAvisoGeral] = useState(null)
   const [salvando, setSalvando] = useState(false)
 
-  const carregar = useCallback(async () => {
-    const dados = await buscarPerfilCliente()
-    setPerfil(dados)
-    setForm({
-      nome: dados.nome ?? '',
-      celular: dados.celular ?? '',
-      idade: dados.idade ?? '',
-      cep: dados.cep ?? '',
-      informacoes: dados.informacoes ?? '',
-    })
-  }, [])
-
   useEffect(() => {
-    carregar()
-      .catch((error) => setAvisoGeral({ tipo: 'erro', texto: error.message }))
-      .finally(() => setCarregando(false))
-  }, [carregar])
+    if (!perfil) return
+    setForm({
+      nome: perfil.nome ?? '',
+      celular: perfil.celular ?? '',
+      idade: perfil.idade ?? '',
+      cep: perfil.cep ?? '',
+      informacoes: perfil.informacoes ?? '',
+    })
+  }, [perfil])
 
   const alterar = (e) => setForm((atual) => ({ ...atual, [e.target.name]: e.target.value }))
 
@@ -65,7 +57,7 @@ export default function ClientProfile() {
       }
       if (soDigitos(form.cep) !== soDigitos(perfil.cep)) alteracoes.cep = form.cep.trim()
       await atualizarDadosClientes(alteracoes)
-      await Promise.all([carregar(), recarregar()])
+      await Promise.all([recarregarPerfil(), recarregar()])
       setAvisoDados({ tipo: 'sucesso', texto: 'Dados atualizados com sucesso.' })
     } catch (error) {
       setAvisoDados({ tipo: 'erro', texto: error.message })
@@ -94,11 +86,11 @@ export default function ClientProfile() {
         <p className="text-gray-500 mt-1">Gerencie seus dados pessoais e preferências</p>
       </div>
 
-      {avisoGeral && <div className="mb-6"><Aviso tipo={avisoGeral.tipo}>{avisoGeral.texto}</Aviso></div>}
+      {(avisoGeral || erroPerfil) && <div className="mb-6"><Aviso tipo={avisoGeral?.tipo}>{avisoGeral?.texto ?? erroPerfil}</Aviso></div>}
 
-      {carregando && <div className="bg-white rounded-2xl h-96 animate-pulse" />}
+      {carregando && !perfil && <div className="bg-white rounded-2xl h-96 animate-pulse" />}
 
-      {!carregando && perfil && (
+      {perfil && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white rounded-2xl border border-gray-100 p-6 h-fit">
             <div className="flex flex-col items-center text-center">

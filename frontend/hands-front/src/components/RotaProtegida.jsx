@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom'
+import PainelProvider from '../context/PainelProvider'
 import useAuth from '../hooks/useAuth'
 import { inicioPorPapel, loginPorPapel } from '../utils/rotasPorPapel'
 
@@ -14,5 +15,9 @@ export default function RotaProtegida({ papel }) {
   if (usuario.role !== papel) {
     return <Navigate to={inicioPorPapel[usuario.role] ?? '/'} replace />
   }
-  return <Outlet />
+  return (
+    <PainelProvider key={papel} papel={papel}>
+      <Outlet />
+    </PainelProvider>
+  )
 }

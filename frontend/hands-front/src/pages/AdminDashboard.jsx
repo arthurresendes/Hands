@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react'
 import AdminLayout from '../components/AdminLayout'
 import Aviso from '../components/Aviso'
-import useFetch from '../hooks/useFetch'
+import useEstadoPainel from '../hooks/useEstadoPainel'
 import { UsersIcon, BriefcaseIcon, StarOutlineIcon, DownloadIcon, UserPlusIcon } from '../components/icons'
 import { buscarDashboardAdmin } from '../api/get/admin/dashboardAdmin'
 
@@ -22,7 +23,20 @@ function BarChart({ data, color }) {
 const formatar = (valor) => valor.toLocaleString('pt-BR')
 
 export default function AdminDashboard() {
-  const { data, loading, error } = useFetch(buscarDashboardAdmin)
+  const [data, setData] = useEstadoPainel('admin.dashboard', null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let ativo = true
+    buscarDashboardAdmin()
+      .then((dados) => ativo && setData(dados))
+      .catch((erro) => ativo && setError(erro))
+    return () => {
+      ativo = false
+    }
+  }, [setData])
+
+  const loading = !data && !error
 
   const cards = data && [
     { label: 'Total de clientes cadastrados', value: data.total_clientes, Icon: UsersIcon, accent: '#5B2EFF' },
