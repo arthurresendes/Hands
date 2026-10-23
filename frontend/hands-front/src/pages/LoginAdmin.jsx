@@ -1,12 +1,14 @@
+import Aviso from '../components/Aviso'
 import FormField from '../components/FormField'
 import { ShieldLockIcon, MailIcon, LockIcon } from '../components/icons'
 import useAuth from '../hooks/useAuth'
 import { inicioPorPapel } from '../utils/rotasPorPapel'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 export default function LoginAdmin() {
   const navigate = useNavigate()
+  const { state } = useLocation()
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -42,6 +44,8 @@ export default function LoginAdmin() {
         <form className="space-y-5 bg-white rounded-2xl p-8 shadow-2xl" onSubmit={handleLogin}>
           <FormField label="E-mail administrativo" type="email" placeholder="admin@hands.com" Icon={MailIcon} name="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <FormField label="Senha" type="password" placeholder="Digite sua senha" Icon={LockIcon} name="senha" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} />
+
+          {state?.sessaoExpirada && <Aviso tipo="atencao">Sua sessão expirou. Entre novamente para continuar.</Aviso>}
 
           {erro && <p className="text-sm text-red-500 bg-red-50 rounded-xl px-4 py-3">{erro}</p>}
 

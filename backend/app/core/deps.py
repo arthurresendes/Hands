@@ -13,7 +13,7 @@ async def obter_token_do_cookie(request: Request) -> str:
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Não autenticado.",
+            detail="Sua sessão expirou. Entre novamente para continuar.",
         )
     return token
 
@@ -21,7 +21,7 @@ async def obter_token_do_cookie(request: Request) -> str:
 async def get_token_payload(token: str = Depends(obter_token_do_cookie)) -> dict:
     credential_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Não foi possível validar as credenciais.",
+        detail="Sua sessão expirou. Entre novamente para continuar.",
     )
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.ALGORITHM])
@@ -37,7 +37,7 @@ def exigir_role(*roles_permitidas: str):
         if payload.get("role") not in roles_permitidas:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Acesso não autorizado para este perfil.",
+                detail="Você não tem permissão para acessar este recurso.",
             )
         return payload
     return verificador

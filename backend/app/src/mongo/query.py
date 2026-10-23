@@ -4,7 +4,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import HTTPException, status
 from core.security import gerar_senha_hash
-from src.mongo.criacao import validar_cpf,pegar_dados_cep
+from src.mongo.criacao import validar_cpf,pegar_dados_cep,cpf_em_uso
 from datetime import datetime, timedelta, timezone
 
 protecao_dados_sensiveis = {
@@ -87,6 +87,8 @@ async def atualizar_cpf(collection_name: str,id: str, cpf: str):
         cpf_valido = await validar_cpf(cpf)
         if cpf_valido != True:
             return {'Erro': 'CPF não validado, insira novamente.'}
+        if await cpf_em_uso(collection, cpf, ignorar_id=id):
+            return {'Erro': 'Já existe uma conta com este CPF.'}
         filtro = {"_id": ObjectId(id)}
         alteracao = {"$set": {"cpf": cpf}}
         res = await collection.update_one(filtro,alteracao)

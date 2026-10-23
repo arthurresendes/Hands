@@ -6,6 +6,7 @@ from routers.api.endpoint.router_recuperacao import routerrecuperacao
 import uvicorn
 from contextlib import asynccontextmanager
 from core.database import criar_indices
+from core.erros import registrar_tratadores
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,6 +17,7 @@ app = FastAPI(title="Hands - Marktplace", version="1.0",lifespan=lifespan)
 app.include_router(router)
 app.include_router(routerauth)
 app.include_router(routerrecuperacao)
+registrar_tratadores(app)
 
 app.add_middleware(
     CORSMiddleware,

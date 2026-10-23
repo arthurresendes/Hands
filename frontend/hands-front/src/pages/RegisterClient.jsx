@@ -46,6 +46,7 @@ export default function RegisterClient() {
           cpf: form.cpf.trim(),
           informacoes: form.informacoes.trim(),
           senha: form.senha,
+          aceite_termos: aceito,
         },
         foto,
       )

@@ -6,6 +6,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import ListFlowable, ListItem, Paragraph, SimpleDocTemplate, Spacer
 
 TITULO = 'Termos de Uso e Política de Privacidade'
+TERMOS_VERSAO = '2026-10-22'
 
 PARAGRAFOS = [
     (

@@ -2,7 +2,8 @@ from fastapi import APIRouter,status,HTTPException,Request,Depends,Form,File,Upl
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi.responses import FileResponse
-from datetime import datetime
+from datetime import datetime, timezone
+import logging
 from src.mongo.query import listagem_clientes,listagem_prestadores,deletar_por_email, busca_especifica_cliente,busca_especifica_prestador,atualizar,atualizar_senha,atualizar_cpf,atualizar_cep,avaliar_hands, listagem_avaliacoes_hands,avaliar_pessoas,listagem_avaliacoes_clientes,listagem_avaliacoes_prestadores,ver_avaliacoes_recebidas,ver_avaliacoes_entregues,total_prestadores,total_clientes,estatisticas_landing,categorias_populares,prestadores_destaque,avaliacoes_hands_landing
 from src.mongo.criacao import adicionar_cliente,adicionar_prestador
 from schemas.Cadastro import Cliente,Prestador
@@ -16,7 +17,7 @@ from src.mongo.busca import buscar_prestadores,detalhe_prestador,listar_favorito
 from src.mongo.admin import dashboard_admin,listar_clientes_admin,listar_prestadores_admin,listar_avaliacoes_hands_admin,exportar_clientes_csv,exportar_prestadores_csv,exportar_avaliacoes_hands_csv
 from core.auth import criar_token_acesso,setar_cookie_acesso
 from core.deps import exigir_usuario,get_token_payload,obter_token_do_cookie
-from src.documentos import gerar_pdf_termos
+from src.documentos import gerar_pdf_termos, TERMOS_VERSAO
 from src.armazenamento import preparar_foto,salvar_foto,caminho_foto,remover_foto
 
 router = APIRouter(prefix="/api/v1")
@@ -46,6 +47,13 @@ async def validar_alteracoes_sensiveis(papel: str, id_usuario: str, email_novo, 
 IDADE_MINIMA = 18
 IDADE_MAXIMA = 100
 
+logger = logging.getLogger(__name__)
+
+def registrar_aceite_termos(aceite: bool) -> dict:
+    if not aceite:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="É necessário aceitar os Termos de Uso e a Política de Privacidade para criar a conta.")
+    return {'versao': TERMOS_VERSAO, 'data': datetime.now(timezone.utc)}
+
 def validar_idade(idade: int | None):
     if idade is None:
         return
@@ -56,7 +64,7 @@ def validar_idade(idade: int | None):
 
 def garantir_dono_ou_admin(usuario: dict, email: str):
     if usuario['role'] != 'admin' and usuario.get('email') != email.strip():
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não autorizado a este recurso.")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para acessar este recurso.")
 
 # Rotas GET
 
@@ -336,9 +344,11 @@ async def cadastro_cliente(
     cpf: str = Form(..., min_length=11),
     informacoes: str = Form(''),
     senha: str = Form(..., min_length=6),
+    aceite_termos: bool = Form(False),
     foto: UploadFile | None = File(None),
 ):
     validar_idade(idade)
+    aceite = registrar_aceite_termos(aceite_termos)
     email = email.strip()
     foto_pronta = await preparar_foto(foto)
     check_user = await cliente_col.find_one({'email': email})
@@ -346,7 +356,7 @@ async def cadastro_cliente(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Cliente com esse e-mail já cadastrado!"
         )
-    resultado = await adicionar_cliente(nome=nome, email=email, celular=celular, idade=idade, cep=cep, cpf=cpf, informacoes=informacoes, senha=senha)
+    resultado = await adicionar_cliente(nome=nome, email=email, celular=celular, idade=idade, cep=cep, cpf=cpf, informacoes=informacoes, senha=senha, aceite_termos=aceite)
     if "Erro" in resultado:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=resultado['Erro'])
     if foto_pronta is not None:
@@ -369,9 +379,11 @@ async def cadastro_prestador(
     servicos: list[str] = Form(...),
     idiomas: list[str] = Form([]),
     certificacoes: list[str] = Form([]),
+    aceite_termos: bool = Form(False),
     foto: UploadFile | None = File(None),
 ):
     validar_idade(idade)
+    aceite = registrar_aceite_termos(aceite_termos)
     email = email.strip()
     if not servicos:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selecione o serviço oferecido.")
@@ -393,7 +405,8 @@ async def cadastro_prestador(
         senha=senha,
         servicos=servicos,
         idiomas=idiomas,
-        certificacoes=certificacoes or None
+        certificacoes=certificacoes or None,
+        aceite_termos=aceite
     )
     if "Erro" in resultado:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=resultado['Erro'])
@@ -438,7 +451,7 @@ async def adicionar_favorito(favorito: Favorito, usuario: dict = Depends(exigir_
 @router.patch('/atualizar_cliente', tags=["PATCH"], status_code=status.HTTP_202_ACCEPTED, summary="Atualizando dados do cliente")
 async def atualizar_cliente(cliente: AtualizarCliente, usuario: dict = Depends(exigir_usuario('cliente','admin'))):
     if usuario['role'] != 'admin' and cliente.id != usuario['id']:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não autorizado a este recurso.")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para acessar este recurso.")
     cliente_busca = await busca_especifica_cliente(cliente.id)
     collection_name = "cliente"
     if cliente_busca is None:
@@ -469,7 +482,7 @@ async def atualizar_cliente(cliente: AtualizarCliente, usuario: dict = Depends(e
 @router.patch('/atualizar_prestador', tags=["PATCH"], status_code=status.HTTP_202_ACCEPTED, summary="Atualizando dados do prestador")
 async def atualizar_prestador(prestador: AtualizarPrestador, usuario: dict = Depends(exigir_usuario('prestador','admin'))):
     if usuario['role'] != 'admin' and prestador.id != usuario['id']:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso não autorizado a este recurso.")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para acessar este recurso.")
     prestador_busca = await busca_especifica_prestador(prestador.id)
     collection_name = "prestador"
     if prestador_busca is None:
@@ -528,9 +541,10 @@ async def deletar_prestador(email: str, usuario: dict = Depends(exigir_usuario('
     except HTTPException:
         raise 
     except Exception as error:
+        logger.exception('Falha ao excluir conta')
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro interno ao deletar prestador: {str(error)}"
+            detail="Não foi possível excluir a conta agora. Tente novamente em instantes."
         )
 
 @router.delete('/deletar_cliente/{email}', tags=["DELETE"], status_code=status.HTTP_204_NO_CONTENT, summary="Deletando cliente por email")
@@ -545,7 +559,8 @@ async def deletar_cliente(email: str, usuario: dict = Depends(exigir_usuario('cl
     except HTTPException:
         raise
     except Exception as error:
+        logger.exception('Falha ao excluir conta')
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro interno ao deletar cliente: {str(error)}"
+            detail="Não foi possível excluir a conta agora. Tente novamente em instantes."
         )

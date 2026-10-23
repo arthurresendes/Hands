@@ -67,6 +67,7 @@ export default function RegisterProvider() {
           informacoes: form.informacoes.trim(),
           valor,
           senha: form.senha,
+          aceite_termos: aceito,
           servicos: [form.servico],
           idiomas: form.idiomas.split(',').map((idioma) => idioma.trim()).filter(Boolean),
         },
