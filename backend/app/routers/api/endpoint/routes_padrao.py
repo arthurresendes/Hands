@@ -40,6 +40,8 @@ async def validar_alteracoes_sensiveis(papel: str, id_usuario: str, email_novo, 
         documento = None
     if documento is None or not verificar_senha(senha_atual, documento['senha']):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Senha atual incorreta.")
+    if senha_nova == senha_atual:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A nova senha deve ser diferente da senha atual.")
 
 IDADE_MINIMA = 18
 IDADE_MAXIMA = 100

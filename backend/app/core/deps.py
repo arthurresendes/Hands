@@ -25,6 +25,8 @@ async def get_token_payload(token: str = Depends(obter_token_do_cookie)) -> dict
     )
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.ALGORITHM])
+        if payload.get("type") != "access_token":
+            raise credential_exception
         return payload
     except jwt.PyJWTError:
         raise credential_exception

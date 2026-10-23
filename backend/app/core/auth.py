@@ -26,6 +26,40 @@ def criar_token_acesso(sub: str, role: str) -> str:
         role=role,
         tempo_vida=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
+def criar_token_redefinicao(id_solicitacao: str) -> str:
+    sp = timezone("America/Sao_Paulo")
+    agora = datetime.now(tz=sp)
+    payload = {
+        "sub": id_solicitacao,
+        "type": "reset_password",
+        "iat": agora,
+        "exp": agora + timedelta(minutes=settings.RECUPERACAO_VALIDADE_MINUTOS),
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.ALGORITHM)
+
+def ler_token_redefinicao(token: str | None) -> str | None:
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.ALGORITHM])
+    except jwt.PyJWTError:
+        return None
+    return payload.get("sub") if payload.get("type") == "reset_password" else None
+
+def setar_cookie_redefinicao(response: Response, token: str):
+    response.set_cookie(
+        key=settings.RECUPERACAO_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
+        max_age=settings.RECUPERACAO_VALIDADE_MINUTOS * 60,
+        path=settings.RECUPERACAO_COOKIE_PATH,
+    )
+
+def limpar_cookie_redefinicao(response: Response):
+    response.delete_cookie(settings.RECUPERACAO_COOKIE_NAME, path=settings.RECUPERACAO_COOKIE_PATH)
+
 def setar_cookie_acesso(response: Response, token: str):
     response.set_cookie(
         key=settings.COOKIE_NAME,
