@@ -23,8 +23,8 @@ export default function AuthProvider({ children }) {
   }, [recarregar])
 
   const login = useCallback(
-    async (papel, email, senha) => {
-      await entrar(papel, email, senha)
+    async (papel, email, senha, lembrar = false) => {
+      await entrar(papel, email, senha, lembrar)
       const atual = await recarregar()
       if (!atual) {
         throw new Error('Não foi possível iniciar a sessão. Verifique se os cookies estão habilitados.')

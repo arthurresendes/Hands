@@ -3,6 +3,7 @@ from pydantic import BaseModel
 class LoginRequest(BaseModel):
     email: str
     senha: str
+    lembrar: bool = False
 
 class LoginResponse(BaseModel):
     mensagem: str

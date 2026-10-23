@@ -6,7 +6,7 @@ const ROTAS_LOGIN = {
   admin: '/login/admin',
 }
 
-export const entrar = (papel, email, senha) => apiPost(ROTAS_LOGIN[papel], { email, senha })
+export const entrar = (papel, email, senha, lembrar = false) => apiPost(ROTAS_LOGIN[papel], { email, senha, lembrar })
 
 export const sair = () => apiPost('/logout', {})
 

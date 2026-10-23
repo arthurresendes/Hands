@@ -14,6 +14,7 @@ export default function LoginClient() {
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
+  const [lembrar, setLembrar] = useState(false)
   const [erro, setErro] = useState('')
   const [enviando, setEnviando] = useState(false)
 
@@ -22,7 +23,7 @@ export default function LoginClient() {
     setErro('')
     setEnviando(true)
     try {
-      const usuario = await login('cliente', email, senha)
+      const usuario = await login('cliente', email, senha, lembrar)
       navigate(inicioPorPapel[usuario.role])
     } catch (error) {
       setErro(error.message)
@@ -53,7 +54,7 @@ export default function LoginClient() {
 
         <div className="flex items-center justify-between text-sm">
           <label className="flex items-center gap-2 text-gray-500">
-            <input type="checkbox" readOnly className="rounded border-gray-300" />
+            <input type="checkbox" checked={lembrar} onChange={(e) => setLembrar(e.target.checked)} className="rounded border-gray-300" />
             Lembrar de mim
           </label>
           <button type="button" onClick={() => navigate('/recuperar-senha/cliente')} className="text-[#5B2EFF] font-semibold">Esqueci minha senha</button>

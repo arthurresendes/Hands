@@ -14,7 +14,7 @@ async def login_cliente(dados: LoginRequest, response: Response):
     usuario = await autenticar_cliente(dados.email.strip(), dados.senha)
     if not usuario:
         raise _credenciais_invalidas()
-    setar_cookie_acesso(response, criar_token_acesso(sub=str(usuario["_id"]), role="cliente"))
+    setar_cookie_acesso(response, criar_token_acesso(sub=str(usuario["_id"]), role="cliente", lembrar=dados.lembrar), lembrar=dados.lembrar)
     return {"mensagem": "Login realizado com sucesso.", "role": "cliente"}
 
 @routerauth.post('/login/prestador', response_model=LoginResponse, tags=['AUTH'], summary='Login de prestador')
@@ -22,7 +22,7 @@ async def login_prestador(dados: LoginRequest, response: Response):
     prestador = await autenticar_prestador(dados.email.strip(), dados.senha)
     if not prestador:
         raise _credenciais_invalidas()
-    setar_cookie_acesso(response, criar_token_acesso(sub=str(prestador["_id"]), role="prestador"))
+    setar_cookie_acesso(response, criar_token_acesso(sub=str(prestador["_id"]), role="prestador", lembrar=dados.lembrar), lembrar=dados.lembrar)
     return {"mensagem": "Login realizado com sucesso.", "role": "prestador"}
 
 @routerauth.post('/login/admin', response_model=LoginResponse, tags=['AUTH'], summary='Login de administrador')

@@ -17,7 +17,7 @@ export default function ForProfessionals() {
   const novosClientes = estatisticas?.novos_clientes_30_dias
 
   return (
-    <section className="py-24 bg-[#1F2937]">
+    <section id="para-profissionais" className="py-24 bg-[#1F2937]">
       <div className="max-w-6xl mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
           <div>

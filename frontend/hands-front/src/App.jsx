@@ -26,6 +26,7 @@ import AdminProviderDetail from './pages/AdminProviderDetail'
 import ForgotPasswordEmail from './pages/ForgotPasswordEmail'
 import ForgotPasswordCode from './pages/ForgotPasswordCode'
 import ForgotPasswordReset from './pages/ForgotPasswordReset'
+import NotFound from './pages/NotFound'
 
 
 export default function App() {
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="/recuperar-senha/:role" element={<ForgotPasswordEmail />} />
         <Route path="/recuperar-senha/:role/codigo" element={<ForgotPasswordCode />} />
         <Route path="/recuperar-senha/:role/nova-senha" element={<ForgotPasswordReset />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       </AuthProvider>
     </BrowserRouter>

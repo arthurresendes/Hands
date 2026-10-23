@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str = os.getenv("JWT_SECRET")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 4
+    ACCESS_TOKEN_LEMBRAR_DIAS: int = 30
 
     EMAIL_REMETENTE: str = os.getenv("EMAIL_REMETENTE", "")
     EMAIL_SENHA: str = os.getenv("EMAIL_SENHA", "")
