@@ -10,8 +10,11 @@ logger = logging.getLogger(__name__)
 
 NOME_REMETENTE = 'Hands'
 
+def _senha_limpa() -> str:
+    return ''.join(settings.EMAIL_SENHA.split())
+
 def email_configurado() -> bool:
-    return bool(settings.EMAIL_REMETENTE and settings.EMAIL_SENHA)
+    return bool(settings.EMAIL_REMETENTE and _senha_limpa())
 
 def _montar_mensagem(destinatario: str, assunto: str, texto: str, html: str) -> EmailMessage:
     mensagem = EmailMessage()
@@ -31,12 +34,15 @@ def _enviar_sincrono(mensagem: EmailMessage):
     with servidor:
         if settings.SMTP_PORT != 465:
             servidor.starttls(context=contexto)
-        servidor.login(settings.EMAIL_REMETENTE, settings.EMAIL_SENHA)
+        servidor.login(settings.EMAIL_REMETENTE, _senha_limpa())
         servidor.send_message(mensagem)
 
 async def enviar_email(destinatario: str, assunto: str, texto: str, html: str) -> bool:
     if not email_configurado():
         logger.warning('Envio de e-mail ignorado: EMAIL_REMETENTE/EMAIL_SENHA não configurados.')
+        return False
+    if not _senha_limpa().isascii():
+        logger.error('EMAIL_SENHA contém caracteres não ASCII (acentos, ç, etc.). Use a senha de app do Google: 16 letras minúsculas, sem comentários na mesma linha do .env.')
         return False
     try:
         await asyncio.to_thread(_enviar_sincrono, _montar_mensagem(destinatario, assunto, texto, html))
